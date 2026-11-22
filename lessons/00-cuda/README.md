@@ -1,6 +1,6 @@
 # 第 0 課　在筆電 GPU 上算出第一個答案
 
-這一課要回答一個問題：怎麼知道自己的 C# 程式真的把計算交給了 NVIDIA 顯卡？
+這是第一個獨立範例。從兩組數字開始，你能用紙筆先算出答案，再確認 C# 真的把相同的計算交給了 NVIDIA 顯卡。之後在 GPT 中，一個位置也會有一組數字，GPU 會替許多位置同時計算。
 
 1. 在裝有 NVIDIA 顯卡與驅動程式的 Windows 電腦上開啟 PowerShell。輸入 `nvidia-smi`，在裝置表中找到顯卡名稱。`dotnet --list-sdks` 應列出 10.x 或支援 net10.0 的更新 SDK，`dotnet --list-runtimes` 應列出 Microsoft.NETCore.App 10.x。若缺少環境，可安裝 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)。
 2. 在專案根目錄（含 minigpt.cmd 的資料夾）執行下列指令。第一次執行需要 NuGet 套件快取或網路連線，以取得 ILGPU。
@@ -31,3 +31,7 @@
 `Synchronize()` 等待 GPU 算完，`GetAsArray1D()` 把結果帶回主記憶體。最後的迴圈用 CPU 逐項驗算。若程式顯示找不到 CUDA 裝置，先看 `nvidia-smi` 能否列出顯卡。若看到其他 CUDA 顯卡的名稱，表示加法是在那張卡上執行。
 
 **動手試**　把 `right` 的第二個數字從 4 改成 10。先寫下你預測會改變的位置和數值，再執行同一條指令核對。完成後把 10 改回 4，方便下次重現。
+
+如果你能指出哪一行將數字送上 GPU、哪一行把結果帶回來，就能追蹤一次 GPU 計算。接著換一個問題：加法規則由人寫好，如果我們只給輸入與正確答案，程式怎麼學會調整數字？
+
+[下一課：從誤差調整一個權重](../01-learning/README.md) · [專案總覽](../../README.md)
