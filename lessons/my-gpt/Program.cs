@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using ILGPU.Runtime;
-using MiniGPT;
+using MyGpt;
 
 try { return Run(args); }
 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -17,7 +17,7 @@ static int Run(string[] args)
 {
     if (args is ["--help"] or ["-h"])
     {
-        Console.WriteLine("miniGPT 互動命令列");
+        Console.WriteLine("my-gpt 互動命令列");
         Console.WriteLine("不帶參數啟動，或 chat [模型.ckpt]。進入後輸入文字，按 Enter 續寫。");
         Console.WriteLine("generate 模型.ckpt 開頭 [新增字元數] | benchmark 模型.ckpt [新增字元數] | score 模型.ckpt 文本.txt");
         return 0;

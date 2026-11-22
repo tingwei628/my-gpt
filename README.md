@@ -6,15 +6,15 @@
 
 目前的模型使用簡單英文句型訓練。輸入 `the fox ` 後，它會逐字接續文字。互動介面每次接受一段獨立開頭，輸入需使用訓練字表內的字元。
 
-## miniGPT 是什麼，與 inference engine 有什麼關係
+## my-gpt 是什麼，與 inference engine 有什麼關係
 
 ### 先分辨專案、模型與權重
 
-GPT 是 Generative Pre-trained Transformer，這裡用它來學習文字中「下一個字元會是什麼」。Transformer 透過注意力讀取前文，訓練把觀察到的規律存進權重，再用這些權重逐字生成。本專案的 mini 表示採用較少層數、較小向量與簡單語料，讓初學者能追蹤每一步。這份實作以一個字元作為一個 token，也就是模型的一個輸入單位。
+GPT 是 Generative Pre-trained Transformer，這裡用它來學習文字中「下一個字元會是什麼」。Transformer 透過注意力讀取前文，訓練把觀察到的規律存進權重，再用這些權重逐字生成。本專案採用較少層數、較小向量與簡單語料，讓初學者能追蹤每一步。這份實作以一個字元作為一個 token，也就是模型的一個輸入單位。
 
-Karpathy 的 **minGPT** 是一套用 PyTorch 撰寫、以教學為目的的 GPT 實作。本專案以它的概念為參考，用 C# 與 ILGPU 實作字元級 GPT，文件中稱為 **miniGPT**。這個專案同時包含模型、訓練工具、推論程式與教學範例。
+Karpathy 的 **minGPT** 是一套用 PyTorch 撰寫、以教學為目的的 GPT 實作。本專案以它的概念為參考，用 C# 與 ILGPU 實作字元級 GPT，文件中稱為 **my-gpt**。這個專案同時包含模型、訓練工具、推論程式與教學範例。
 
-說「miniGPT 模型」時，指的是 **Transformer 計算規則與學好的權重**。計算規則描述每層如何處理輸入，權重則是訓練調整出來的數字。給它字元編號，做一次前向計算，會得到每個候選字元的分數（logits）。
+說「my-gpt 模型」時，指的是 **Transformer 計算規則與學好的權重**。計算規則描述每層如何處理輸入，權重則是訓練調整出來的數字。給它字元編號，做一次前向計算，會得到每個候選字元的分數（logits）。
 
 `Model.cs` 組裝計算規則，`Kernels.cs` 實作數學，`.ckpt` 保存學好的權重以及字表、尺寸、步數與續訓狀態。只看一次模型的輸出，就能替「下一個字元」選答案。
 
@@ -40,7 +40,7 @@ flowchart TD
     Q -->|"否"| R["回傳整段文字與時間統計"]
 ```
 
-| 比較項目 | miniGPT 模型 | 本專案的推論引擎 |
+| 比較項目 | my-gpt 模型 | 本專案的推論引擎 |
 |---|---|---|
 | 要回答的問題 | 給定前文，各候選字元應得幾分 | 如何載入並執行模型，接成可用的生成或評分流程 |
 | 主要內容 | Transformer 結構與學習參數 | 載入、編碼、上下文處理、GPU 呼叫、選字與生成迴圈 |
@@ -50,14 +50,16 @@ flowchart TD
 
 `InteractiveCli.cs` 是人與程式互動的介面。`InferenceCommands.cs` 解析單次命令。它們把生成與評分交給 session，讓同一套引擎能用在互動和單次執行。模型的前向計算也會被訓練共用，所以 `Model.cs` 同時出現在兩條路徑。
 
-這裡的引擎支援本專案自訂的 `MiniGPT/1` checkpoint 格式與實作允許的尺寸。換成另一份相容權重時，可以沿用相同的 session 程式。檔案格式、字表與模型運算必須配合，才能正確執行。
+這裡的引擎支援本專案自訂的 `my-gpt/1` checkpoint 格式與實作允許的尺寸，也相容更名前保存的權重。新存檔會使用 `my-gpt/1`。換成另一份相容權重時，可以沿用相同的 session 程式。檔案格式、字表與模型運算必須配合，才能正確執行。
+
+專案、資料夾和啟動命令使用 `my-gpt`。C# 識別名稱使用 `MyGpt`，因此所有模型程式共用 `MyGpt` 命名空間。
 
 ## 圖解閱讀入口
 
 每堂課的教材都有一張對應流程圖，先看資料怎麼走，再回到程式找同名函式。函式圖中箭頭表示呼叫或資料流，方框內會標出輸入、動作或輸出。圖中的迴圈次數與陣列尺寸會依實際命令而不同。
 
 - [第 0 課](lessons/00-cuda/README.md) 與 [第 1 課](lessons/01-learning/README.md) 的圖解從 GPU 加法與單一權重開始。
-- [第 2 至 6 課](lessons/miniGPT/README.md) 的圖解位於各課開頭，依序觀察矩陣、注意力、驗算、訓練與生成。
+- [第 2 至 6 課](lessons/my-gpt/README.md) 的圖解位於各課開頭，依序觀察矩陣、注意力、驗算、訓練與生成。
 - [命令、推論、存檔與驗證函式圖解](docs/functions.md) 說明每個手寫函式的輸入、動作與輸出。
 - [模型、GPU 核心與 CPU 參考函式圖解](docs/model-functions.md) 展開模型的組裝和運算，包括小型輔助函式。
 
@@ -82,7 +84,7 @@ loss 是模型這次預測的錯誤程度，梯度描述調整某個權重會如
 
 ## 七堂課怎麼接起來
 
-每課只增加一個主要問題。第 0、1 課各有獨立的小專案，讓你能用少量數字驗算。第 2 課開始，所有命令共用 `lessons/miniGPT` 裡的完整實作，依序觀察其中的運算、組裝、訓練與生成。
+每課只增加一個主要問題。第 0、1 課各有獨立的小專案，讓你能用少量數字驗算。第 2 課開始，所有命令共用 `lessons/my-gpt` 裡的完整實作，依序觀察其中的運算、組裝、訓練與生成。
 
 ### 第 0 課　讓 C# 把工作交給 GPU
 
@@ -100,31 +102,31 @@ loss 是模型這次預測的錯誤程度，梯度描述調整某個權重會如
 
 把第 1 課的「輸入乘上權重」擴大成矩陣乘法。每列代表一個輸入位置，每欄代表一個候選輸出。用手算出 `[4,6,10,12]`，再執行 `math`，核對第 0 課的 GPU 是否也算出相同結果。
 
-這個小例子先核對乘法本身。同樣的運算放到模型最後一層時，每一欄會對應一個候選字元，它的分數稱為 logit。分數經 softmax 變成機率後，就能用正確字元的機率計算交叉熵 loss。完成後，應能把一列數字追到一列預測分數。下一課會用同樣的矩陣乘法，讓各位置從前文讀取資訊。[第 2 課教材](lessons/miniGPT/README.md#lesson-2)
+這個小例子先核對乘法本身。同樣的運算放到模型最後一層時，每一欄會對應一個候選字元，它的分數稱為 logit。分數經 softmax 變成機率後，就能用正確字元的機率計算交叉熵 loss。完成後，應能把一列數字追到一列預測分數。下一課會用同樣的矩陣乘法，讓各位置從前文讀取資訊。[第 2 課教材](lessons/my-gpt/README.md#lesson-2)
 
 ### 第 3 課　讓預測參考前面的字
 
 第 1 課的 bigram 只依目前字元預測。例如 `the ` 和 `in the ` 最後都是空白，卻需要不同的前文資訊。這一課先把每個字元與位置轉成向量，再用第 2 課的乘法計算 Q、K、V。Q 和 K 的分數決定每個位置要從哪些 V 讀取資訊，這個過程就是注意力。
 
-執行 `attention`，觀察 abc 的三列注意力機率。未來位置的權重必須為零，讓模型做題時只能讀取已出現的文字。再沿著 LayerNorm、注意力、殘差相加、前饋網路讀完一個 Transformer block。完成後，應能說明一個位置如何取得前文資訊。下一課要確認這些計算及梯度都正確。[第 3 課教材](lessons/miniGPT/README.md#lesson-3)
+執行 `attention`，觀察 abc 的三列注意力機率。未來位置的權重必須為零，讓模型做題時只能讀取已出現的文字。再沿著 LayerNorm、注意力、殘差相加、前饋網路讀完一個 Transformer block。完成後，應能說明一個位置如何取得前文資訊。下一課要確認這些計算及梯度都正確。[第 3 課教材](lessons/my-gpt/README.md#lesson-3)
 
 ### 第 4 課　確認模型的計算和學習方向
 
 把前幾課的手算擴大為獨立的 CPU 參考答案。執行 `check`，比較 CPU 和 GPU 的預測分數，再從每組參數抽一個元素，各加減一點，從 loss 的變化估計梯度。它也會檢查未來字元的改動、不同 batch 的隔離，以及存檔再載入的結果。
 
-完成後，應能解釋為什麼梯度值得相信，以及固定一小批資料為什麼可以被模型記住。有了這些依據，下一課才把完整訓練迴圈接到真正的語料。[第 4 課教材](lessons/miniGPT/README.md#lesson-4)
+完成後，應能解釋為什麼梯度值得相信，以及固定一小批資料為什麼可以被模型記住。有了這些依據，下一課才把完整訓練迴圈接到真正的語料。[第 4 課教材](lessons/my-gpt/README.md#lesson-4)
 
 ### 第 5 課　把小例子擴大成完整訓練
 
 把第 1 課的更新方式、第 3 課的模型、第 4 課的數值檢查串在一起。程式從文本抽取一段輸入，答案是原文的下一字元。在 GPU 上預測、計算 loss、反向傳播，再由 AdamW 更新權重。反覆做完一次批次更新，就是一個 step。
 
-這一課把資料分為訓練段與驗證段，觀察模型對保留文字的預測，並將權重、動量和步數存進 checkpoint。完成後，應能訓練、關閉程式、還原並繼續更新。下一課會用已學好的權重處理新開頭。[第 5 課教材](lessons/miniGPT/README.md#lesson-5)
+這一課把資料分為訓練段與驗證段，觀察模型對保留文字的預測，並將權重、動量和步數存進 checkpoint。完成後，應能訓練、關閉程式、還原並繼續更新。下一課會用已學好的權重處理新開頭。[第 5 課教材](lessons/my-gpt/README.md#lesson-5)
 
 ### 第 6 課　把下一字元預測變成可操作的生成
 
 載入第 5 課的 checkpoint，輸入 `the fox `，選出下一個字元，接回文字後再預測。這樣重複就得到整句續寫。互動命令列讓同一份權重留在 GPU 中，可連續接受不同開頭。
 
-完成後，應能用 `chat` 續寫、用 `benchmark` 對照固定開頭、用 `score` 評分指定文本，也能解釋為什麼生成時會使用最近 64 個字元。這時，從第 0 課的 GPU 陣列運算到可使用的模型就接起來了。[第 6 課教材](lessons/miniGPT/README.md#lesson-6)
+完成後，應能用 `chat` 續寫、用 `benchmark` 對照固定開頭、用 `score` 評分指定文本，也能解釋為什麼生成時會使用最近 64 個字元。這時，從第 0 課的 GPU 陣列運算到可使用的模型就接起來了。[第 6 課教材](lessons/my-gpt/README.md#lesson-6)
 
 ## 把課程對應到實際架構
 
@@ -185,23 +187,23 @@ C# 主程式在 CPU 上負責命令、文字編碼、抽取資料與讀寫檔案
 
 需要 Windows、可用的 NVIDIA 驅動、支援 `net10.0` 的 .NET SDK 與 .NET 10 runtime。執行 `nvidia-smi`、`dotnet --list-sdks`、`dotnet --list-runtimes` 可確認環境。第一次建置需從 NuGet 取得 ILGPU 1.5.3 套件，或已有套件快取。[.NET 10 下載](https://dotnet.microsoft.com/download/dotnet/10.0)
 
-所有命令都從專案根目錄執行。第 0、1 課由各自的專案啟動，第 2 課開始可使用 `.\minigpt.cmd`：
+所有命令都從專案根目錄執行。第 0、1 課由各自的專案啟動，第 2 課開始可使用 `.\my-gpt.cmd`：
 
 ```powershell
 dotnet run --project lessons/00-cuda/Lesson00.csproj
 dotnet run --project lessons/01-learning/Learning.csproj
-.\minigpt.cmd math
-.\minigpt.cmd attention
-.\minigpt.cmd check
+.\my-gpt.cmd math
+.\my-gpt.cmd attention
+.\my-gpt.cmd check
 ```
 
 ### 已有模型時啟動互動模式
 
 ```powershell
-.\minigpt.cmd
+.\my-gpt.cmd
 ```
 
-程式從 `lessons/miniGPT` 載入唯一的 checkpoint。輸入 `the fox ` 後按 Enter，即可看到逐字新增的文字。
+程式從 `lessons/my-gpt` 載入唯一的 checkpoint。輸入 `the fox ` 後按 Enter，即可看到逐字新增的文字。
 
 | 互動指令 | 用途 |
 |---|---|
@@ -213,7 +215,7 @@ dotnet run --project lessons/01-learning/Learning.csproj
 有多份模型時，用 `chat` 指定檔案。相對路徑以目前工作目錄為準。
 
 ```powershell
-.\minigpt.cmd chat "lessons/miniGPT/quality-step1001-lr0.0003-22f75508d3.ckpt"
+.\my-gpt.cmd chat "lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt"
 ```
 
 ### 首次下載時建立模型
@@ -221,8 +223,8 @@ dotnet run --project lessons/01-learning/Learning.csproj
 checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複製既有權重，或先建立一份練習模型：
 
 ```powershell
-.\minigpt.cmd train lessons/miniGPT/quickstart.ckpt 100
-.\minigpt.cmd
+.\my-gpt.cmd train lessons/my-gpt/quickstart.ckpt 100
+.\my-gpt.cmd
 ```
 
 100 步用來觀察訓練流程，生成品質需搭配驗證與實際續寫判斷。第 5 課會進一步解釋如何保存、比較與續訓。指定新檔名時，該檔案需尚未存在。
@@ -234,7 +236,7 @@ checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複�
 | 檔案 | 用途與使用者 |
 |---|---|
 | `README.md` | 專案入口、架構、操作與完整檔案清單 |
-| `minigpt.cmd` | Windows 啟動腳本，定位 miniGPT 專案並轉交參數 |
+| `my-gpt.cmd` | Windows 啟動腳本，定位 my-gpt 專案並轉交參數 |
 | `.gitignore` | 專案共用忽略規則，排除建置輸出、IDE 狀態、checkpoint、環境變數與憑證 |
 | `docs/functions.md` | 命令、互動、推論、存檔與驗證的逐函式圖解，包含輸入與輸出 |
 | `docs/model-functions.md` | 模型組裝、前反向計算、GPU 核心和 CPU 參考的逐函式圖解 |
@@ -244,19 +246,19 @@ checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複�
 | `lessons/01-learning/Learning.csproj` | 第 1 課獨立 .NET 專案 |
 | `lessons/01-learning/Program.cs` | 單一權重更新與 bigram 下一字元訓練 |
 | `lessons/01-learning/README.md` | 第 1 課梯度算式、預期結果與練習 |
-| `lessons/miniGPT/MiniGPT.csproj` | 建置入口，引用 ILGPU.Algorithms，將語料複製到執行目錄 |
-| `lessons/miniGPT/Program.cs` | 命令入口、訓練迴圈、驗證切分及訓練後樣本生成 |
-| `lessons/miniGPT/InteractiveCli.cs` | 互動輸入、模型選取、斜線指令與逐字顯示 |
-| `lessons/miniGPT/InferenceCommands.cs` | 單次生成、固定提示詞評估、文本評分及顯示結果 |
-| `lessons/miniGPT/InferenceSession.cs` | 重用已載入模型，負責編碼、滑動視窗生成與評分 |
-| `lessons/miniGPT/Model.cs` | GPU 記憶體、Transformer 計算圖、前向、反向與參數更新 |
-| `lessons/miniGPT/Kernels.cs` | ILGPU 核心函式，計算前向數學、梯度與 AdamW 更新 |
-| `lessons/miniGPT/Checkpoint.cs` | 讀寫自訂 MiniGPT/1 格式，推論與續訓共用 |
-| `lessons/miniGPT/Checks.cs` | 數值、梯度、因果遮罩、批次、推論及存檔還原檢查 |
-| `lessons/miniGPT/Reference.cs` | C# double 與二維陣列的獨立 CPU 答案，供 Checks 對照 GPU |
-| `lessons/miniGPT/corpus.txt` | 預設英文語料，64 個不同句型組合，依程式切分為訓練與驗證資料 |
-| `lessons/miniGPT/README.md` | 第 2 至 6 課的矩陣、注意力、驗收、訓練與推論教材 |
-| `lessons/miniGPT/quality-step1001-lr0.0003-22f75508d3.ckpt` | 本機最佳模型，供生成、評分與續訓載入 |
+| `lessons/my-gpt/my-gpt.csproj` | 建置入口，引用 ILGPU.Algorithms，將語料複製到執行目錄 |
+| `lessons/my-gpt/Program.cs` | 命令入口、訓練迴圈、驗證切分及訓練後樣本生成 |
+| `lessons/my-gpt/InteractiveCli.cs` | 互動輸入、模型選取、斜線指令與逐字顯示 |
+| `lessons/my-gpt/InferenceCommands.cs` | 單次生成、固定提示詞評估、文本評分及顯示結果 |
+| `lessons/my-gpt/InferenceSession.cs` | 重用已載入模型，負責編碼、滑動視窗生成與評分 |
+| `lessons/my-gpt/Model.cs` | GPU 記憶體、Transformer 計算圖、前向、反向與參數更新 |
+| `lessons/my-gpt/Kernels.cs` | ILGPU 核心函式，計算前向數學、梯度與 AdamW 更新 |
+| `lessons/my-gpt/Checkpoint.cs` | 讀寫自訂 my-gpt/1 格式，推論與續訓共用 |
+| `lessons/my-gpt/Checks.cs` | 數值、梯度、因果遮罩、批次、推論及存檔還原檢查 |
+| `lessons/my-gpt/Reference.cs` | C# double 與二維陣列的獨立 CPU 答案，供 Checks 對照 GPU |
+| `lessons/my-gpt/corpus.txt` | 預設英文語料，64 個不同句型組合，依程式切分為訓練與驗證資料 |
+| `lessons/my-gpt/README.md` | 第 2 至 6 課的矩陣、注意力、驗收、訓練與推論教材 |
+| `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt` | 本機最佳模型，供生成、評分與續訓載入 |
 
 `Checks.cs` 與 `Reference.cs` 提供教學驗收所需的獨立答案。第 0、1 課保留從基礎理解 GPT 的學習順序，各自可單獨執行。
 
@@ -270,38 +272,38 @@ checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複�
 
 ## 常用命令
 
-以下命令從專案根目錄執行。`minigpt.cmd` 可轉交所有 miniGPT 指令。
+以下命令從專案根目錄執行。`my-gpt.cmd` 可轉交所有 my-gpt 指令。
 
 ```powershell
-$model = "lessons/miniGPT/quality-step1001-lr0.0003-22f75508d3.ckpt"
+$model = "lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt"
 if (-not (Test-Path -LiteralPath $model)) {
-    $model = "lessons/miniGPT/my-first.ckpt"
+    $model = "lessons/my-gpt/my-first.ckpt"
     if (-not (Test-Path -LiteralPath $model)) {
-        $model = "lessons/miniGPT/quickstart.ckpt"
+        $model = "lessons/my-gpt/quickstart.ckpt"
     }
 }
 
 # 單次續寫 60 個字元
-.\minigpt.cmd generate $model "the fox " 60
+.\my-gpt.cmd generate $model "the fox " 60
 
 # 固定四個開頭，各續寫 100 個字元
-.\minigpt.cmd benchmark $model 100
+.\my-gpt.cmd benchmark $model 100
 
 # 評分指定文本
-.\minigpt.cmd score $model lessons/miniGPT/corpus.txt
+.\my-gpt.cmd score $model lessons/my-gpt/corpus.txt
 
 # 從頭訓練另一份模型
-.\minigpt.cmd train lessons/miniGPT/new-batch4.ckpt 500 lessons/miniGPT/corpus.txt 4
+.\my-gpt.cmd train lessons/my-gpt/new-batch4.ckpt 500 lessons/my-gpt/corpus.txt 4
 
 # 在副本上續訓
-$trial = Join-Path $PWD.Path "lessons/miniGPT/trial.ckpt"
+$trial = Join-Path $PWD.Path "lessons/my-gpt/trial.ckpt"
 [IO.File]::Copy((Resolve-Path -LiteralPath $model).Path, $trial)
-.\minigpt.cmd resume lessons/miniGPT/trial.ckpt 100 --lr 0.0001
+.\my-gpt.cmd resume lessons/my-gpt/trial.ckpt 100 --lr 0.0001
 
 # 數學與重現性檢查
-.\minigpt.cmd check
-.\minigpt.cmd math
-.\minigpt.cmd attention
+.\my-gpt.cmd check
+.\my-gpt.cmd math
+.\my-gpt.cmd attention
 ```
 
 新模型與副本檔名需尚未存在。新增 checkpoint 後，互動模式可用 `chat` 指定模型。

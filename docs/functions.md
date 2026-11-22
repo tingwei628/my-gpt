@@ -1,6 +1,6 @@
 # 從命令列到文字輸出的函式圖解
 
-先讀 [miniGPT 與推論引擎](../README.md)，再沿這份文件追蹤「載入一次、生成一次、評分一次」。[模型函式圖解](model-functions.md) 接著說明 GPU 計算。
+先讀 [my-gpt 與推論引擎](../README.md)，再沿這份文件追蹤「載入一次、生成一次、評分一次」。[模型函式圖解](model-functions.md) 接著說明 GPU 計算。
 
 每張圖把相關函式放在一起，每一列說明一個具名函式的輸入、動作與輸出。建構式負責建立物件，Dispose 負責釋放資源。區域函式會標出它所屬的外層函式。record 是保存結果或設定的資料型別。
 
@@ -31,7 +31,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A["minigpt.cmd 轉交參數"] --> B["頂層 try / catch<br/>呼叫 Program.Run"]
+    A["my-gpt.cmd 轉交參數"] --> B["頂層 try / catch<br/>呼叫 Program.Run"]
     B --> C{"Program.Run<br/>讀取命令"}
     C -->|"空參數或 chat"| D["InteractiveCli.Run"]
     C -->|"generate / score / benchmark"| E["InferenceCommands.Run"]
@@ -50,7 +50,7 @@ flowchart TD
 | Run 內的 Validation | 外層的 model、驗證段、T 與 batch | 取完整驗證視窗，重複填滿 batch，呼叫 Evaluate | 各完整視窗平均 loss |
 | Program.Generate | 已在訓練中使用的 Model、字表、開頭、長度 | 保留最近 T 字元，呼叫 Forward，逐次取最大分數 | 包含開頭的樣本文字 |
 
-Program.Generate 供訓練結束後列印樣本使用，與下面的 InferenceSession.Generate 都沿用模型前向計算。前者使用訓練中的 model，後者管理專門載入的推論 model。[程式入口](../lessons/miniGPT/Program.cs)
+Program.Generate 供訓練結束後列印樣本使用，與下面的 InferenceSession.Generate 都沿用模型前向計算。前者使用訓練中的 model，後者管理專門載入的推論 model。[程式入口](../lessons/my-gpt/Program.cs)
 
 ## 互動介面如何一直等待下一次輸入
 
@@ -73,9 +73,9 @@ flowchart TD
 | 函式 | 輸入 | 做的事 | 輸出或狀態 |
 |---|---|---|---|
 | InteractiveCli.Run | 可選 checkpoint 路徑 | 建立 session、讀取輸入、解析斜線指令，將新字元寫到 Console | 連續續寫與結束碼 0 |
-| InteractiveCli.DefaultCheckpoint | 執行目錄 | 向上找 MiniGPT.csproj，確認該專案內恰有一個 ckpt | 模型路徑，零檔或多檔時給提示 |
+| InteractiveCli.DefaultCheckpoint | 執行目錄 | 向上找 my-gpt.csproj，確認該專案內恰有一個 ckpt | 模型路徑，零檔或多檔時給提示 |
 
-空字串會回到輸入提示，單一空白則能作為模型輸入。字表外文字顯示錯誤後，可以繼續輸入。onCharacter 是傳給 Generate 的回呼，每產生一個新字元，就執行 Console.Write。[互動介面](../lessons/miniGPT/InteractiveCli.cs)
+空字串會回到輸入提示，單一空白則能作為模型輸入。字表外文字顯示錯誤後，可以繼續輸入。onCharacter 是傳給 Generate 的回呼，每產生一個新字元，就執行 Console.Write。[互動介面](../lessons/my-gpt/InteractiveCli.cs)
 
 ## 單次指令如何共用同一套推論程式
 
@@ -101,7 +101,7 @@ flowchart TD
 | InferenceCommands.Run | generate、benchmark 或 score 參數 | 建立 session、執行要求並顯示結果 | 結束碼 0，參數錯誤時拋出提示 |
 | InferenceCommands.Count | args 與長度參數的位置 | 省略時回傳 100，有提供時解析非負整數 | 新增字元數 |
 
-benchmark 的句型檢查與計時寫在 Run 的命令分支中。它使用教材英文提示詞，對每個開頭各自計算完整句與重複句。[單次命令](../lessons/miniGPT/InferenceCommands.cs)
+benchmark 的句型檢查與計時寫在 Run 的命令分支中。它使用教材英文提示詞，對每個開頭各自計算完整句與重複句。[單次命令](../lessons/my-gpt/InferenceCommands.cs)
 
 ## InferenceSession 如何載入、編碼與生成
 
@@ -129,7 +129,7 @@ flowchart TD
 | Generate | prompt、count、可選 onCharacter | 驗證輸入、逐次前向計算與貪婪選字、記錄首字及整段時間 | Generation，文字含原開頭 |
 | Dispose | 已載入的 session | 呼叫 model.Dispose | 釋放 GPU 資源 |
 
-count=0 時回傳原開頭。若開頭超過 T，先驗證全部字元，再只取最近 T 字元計算。補齊的位置不影響先前有效位置，這由模型的因果遮罩保證。[推論 session](../lessons/miniGPT/InferenceSession.cs)
+count=0 時回傳原開頭。若開頭超過 T，先驗證全部字元，再只取最近 T 字元計算。補齊的位置不影響先前有效位置，這由模型的因果遮罩保證。[推論 session](../lessons/my-gpt/InferenceSession.cs)
 
 ## Score 如何把前向分數變成評估指標
 
@@ -172,9 +172,9 @@ flowchart TD
 | 函式 | 輸入 | 做的事 | 輸出或狀態 |
 |---|---|---|---|
 | Checkpoint.Save | path、訓練 model、alphabet、dataHash、overwrite | 寫完整暫存檔，再換到目標路徑，finally 清除暫存 | ckpt 檔案 |
-| Checkpoint.Load | path、forTraining | 檢查 MiniGPT/1，依參數順序還原資料，檢查檔案完整性 | Model，以及 out 字表、語料指紋 |
+| Checkpoint.Load | path、forTraining | 檢查 my-gpt/1，依參數順序還原資料，檢查檔案完整性 | Model，以及 out 字表、語料指紋 |
 
-Save 的 overwrite 預設為 false。Load 失敗時會 Dispose 已建立的 model，再回報錯誤。M 是梯度移動平均，V 是梯度平方移動平均，保存它們可以接續 AdamW 更新。[模型存檔](../lessons/miniGPT/Checkpoint.cs)
+Save 的 overwrite 預設為 false。Load 失敗時會 Dispose 已建立的 model，再回報錯誤。M 是梯度移動平均，V 是梯度平方移動平均，保存它們可以接續 AdamW 更新。[模型存檔](../lessons/my-gpt/Checkpoint.cs)
 
 ## Checks 如何核對模型
 
@@ -197,6 +197,6 @@ flowchart TD
 | Checks.Require | condition、message | 判斷條件是否成立 | 成立則返回，失敗則拋例外 |
 | Run 內的 CpuLoss | 外層目前權重、input、target | 呼叫 Reference.Predict，再用 double 計算平均交叉熵 | 一個可與 GPU 對照的 loss |
 
-CpuLoss 會讀到外層被暫時加減的權重，因此能用兩次獨立 loss 估計該元素的斜率。檢查結束前會把該元素還原。[檢查程式](../lessons/miniGPT/Checks.cs)
+CpuLoss 會讀到外層被暫時加減的權重，因此能用兩次獨立 loss 估計該元素的斜率。檢查結束前會把該元素還原。[檢查程式](../lessons/my-gpt/Checks.cs)
 
 接著閱讀 [Model、Kernels 與 Reference 的函式圖解](model-functions.md)，把 Model.Forward 展開到每個 GPU 運算。

@@ -1,6 +1,6 @@
 using System.Diagnostics;
 
-namespace MiniGPT;
+namespace MyGpt;
 
 internal sealed record Generation(string Text, int NewCharacters, double FirstCharacterMs, double CharactersPerSecond);
 internal sealed record TextScore(int Predictions, double Loss, double Accuracy)

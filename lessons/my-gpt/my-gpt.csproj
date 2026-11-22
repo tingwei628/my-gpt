@@ -4,6 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>MyGpt</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="ILGPU.Algorithms" Version="1.5.3" />

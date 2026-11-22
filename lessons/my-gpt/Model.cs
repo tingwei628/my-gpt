@@ -5,7 +5,7 @@ using ILGPU.Runtime.Cuda;
 using Buffer = ILGPU.Runtime.MemoryBuffer1D<float, ILGPU.Stride1D.Dense>;
 using IdBuffer = ILGPU.Runtime.MemoryBuffer1D<int, ILGPU.Stride1D.Dense>;
 
-namespace MiniGPT;
+namespace MyGpt;
 
 internal record Config(int Batch = 1, int T = 64, int D = 64, int Heads = 4, int Layers = 2);
 internal sealed record Tensor(Buffer Value, Buffer? Grad);

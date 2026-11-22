@@ -1,7 +1,7 @@
 using ILGPU;
 using ILGPU.Algorithms;
 
-namespace MiniGPT;
+namespace MyGpt;
 
 // A matrix has Rows rows. Linear maps K input columns to N output columns.
 // For attention, rows are contiguous sequences of T tokens with H heads of width K.

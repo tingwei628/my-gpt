@@ -1,4 +1,4 @@
-namespace MiniGPT;
+namespace MyGpt;
 
 internal static class InteractiveCli
 {
@@ -8,7 +8,7 @@ internal static class InteractiveCli
         string path = args.Length == 2 ? args[1] : DefaultCheckpoint();
         using var session = new InferenceSession(path);
         int length = 100;
-        Console.WriteLine($"miniGPT | CUDA {session.Device} | step {session.Step}");
+        Console.WriteLine($"my-gpt | CUDA {session.Device} | step {session.Step}");
         Console.WriteLine($"模型 {Path.GetFileName(path)}");
         Console.WriteLine("輸入字表內的文字後按 Enter 續寫。每次輸入都是獨立的新開頭，結尾空白會保留。");
         Console.WriteLine("/help 說明 | /length 60 設定新增字元數 | /info 模型資訊 | /exit 離開");
@@ -62,15 +62,15 @@ internal static class InteractiveCli
     {
         // dotnet run 的輸出目錄位於專案內。向上找專案，讓啟動不依賴目前目錄。
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory.Parent is not null && !File.Exists(Path.Combine(directory.FullName, "MiniGPT.csproj")))
+        while (directory.Parent is not null && !File.Exists(Path.Combine(directory.FullName, "my-gpt.csproj")))
             directory = directory.Parent;
-        string modelDirectory = File.Exists(Path.Combine(directory.FullName, "MiniGPT.csproj"))
+        string modelDirectory = File.Exists(Path.Combine(directory.FullName, "my-gpt.csproj"))
             ? directory.FullName : AppContext.BaseDirectory;
         string[] files = Directory.GetFiles(modelDirectory, "*.ckpt");
         if (files.Length == 0)
-            throw new ArgumentException("在模型資料夾找不到 checkpoint。請先依第 5 課訓練模型，或在專案根目錄執行 .\\minigpt.cmd chat \"模型路徑.ckpt\"。");
+            throw new ArgumentException("在模型資料夾找不到 checkpoint。請先依第 5 課訓練模型，或在專案根目錄執行 .\\my-gpt.cmd chat \"模型路徑.ckpt\"。");
         if (files.Length > 1)
-            throw new ArgumentException($"在模型資料夾找到 {files.Length} 個 checkpoint。請在專案根目錄執行 .\\minigpt.cmd chat \"模型路徑.ckpt\"。相對路徑以目前工作目錄為準。");
+            throw new ArgumentException($"在模型資料夾找到 {files.Length} 個 checkpoint。請在專案根目錄執行 .\\my-gpt.cmd chat \"模型路徑.ckpt\"。相對路徑以目前工作目錄為準。");
         return files[0];
     }
 }

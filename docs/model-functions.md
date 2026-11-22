@@ -6,7 +6,7 @@
 
 ## 1. 建立模型時，先排好計算順序
 
-模型把每個運算記成一個 `Node`，其中包含運算類型、輸入和輸出。下一個節點可以直接引用前一個節點的輸出。這些有先後關係的節點合起來稱為**計算圖**。建立時配置空間，送入實際資料後才依序執行。圖中的箭頭代表左方函式會呼叫右方函式。[Model.cs](../lessons/miniGPT/Model.cs)
+模型把每個運算記成一個 `Node`，其中包含運算類型、輸入和輸出。下一個節點可以直接引用前一個節點的輸出。這些有先後關係的節點合起來稱為**計算圖**。建立時配置空間，送入實際資料後才依序執行。圖中的箭頭代表左方函式會呼叫右方函式。[Model.cs](../lessons/my-gpt/Model.cs)
 
 ```mermaid
 flowchart LR
@@ -40,7 +40,7 @@ flowchart LR
 
 ## 2. 送入一批資料，得到分數或誤差
 
-同一張圖有兩種常用的走法。`Evaluate` 需要正解，用於衡量每一列的預測。`Model.Forward` 只需要字元編號，供推論引擎讀取分數。兩者都在 CPU 安排節點順序，由 GPU 執行節點的數學。[Model.cs](../lessons/miniGPT/Model.cs) · [InferenceSession.cs](../lessons/miniGPT/InferenceSession.cs)
+同一張圖有兩種常用的走法。`Evaluate` 需要正解，用於衡量每一列的預測。`Model.Forward` 只需要字元編號，供推論引擎讀取分數。兩者都在 CPU 安排節點順序，由 GPU 執行節點的數學。[Model.cs](../lessons/my-gpt/Model.cs) · [InferenceSession.cs](../lessons/my-gpt/InferenceSession.cs)
 
 ```mermaid
 flowchart LR
@@ -63,7 +63,7 @@ flowchart LR
 
 ## 3. 用誤差更新一次權重
 
-訓練要回答「若稍微改變某個權重，平均 loss 會怎樣改變？」這個變化率就是梯度。一個張量可能被多條路徑使用，例如殘差相加與注意力都會讀到同一份輸入。反向計算會將各路徑的貢獻加在一起。[Model.cs](../lessons/miniGPT/Model.cs) · [Kernels.cs](../lessons/miniGPT/Kernels.cs)
+訓練要回答「若稍微改變某個權重，平均 loss 會怎樣改變？」這個變化率就是梯度。一個張量可能被多條路徑使用，例如殘差相加與注意力都會讀到同一份輸入。反向計算會將各路徑的貢獻加在一起。[Model.cs](../lessons/my-gpt/Model.cs) · [Kernels.cs](../lessons/my-gpt/Kernels.cs)
 
 ```mermaid
 flowchart TD
@@ -83,7 +83,7 @@ flowchart TD
 
 ## 4. GPU 的每個工作單元實際算什麼
 
-ILGPU 會把三個 kernel 啟動成大量工作單元。`Kernels.Forward` 的一個工作單元算一個輸出元素。`Kernels.Backward` 的一個工作單元收集一個輸入元素收到的所有梯度貢獻。`Kernels.Adam` 的一個工作單元更新一個參數元素。三者各自使用傳入的索引找到負責的位置。[Kernels.cs](../lessons/miniGPT/Kernels.cs)
+ILGPU 會把三個 kernel 啟動成大量工作單元。`Kernels.Forward` 的一個工作單元算一個輸出元素。`Kernels.Backward` 的一個工作單元收集一個輸入元素收到的所有梯度貢獻。`Kernels.Adam` 的一個工作單元更新一個參數元素。三者各自使用傳入的索引找到負責的位置。[Kernels.cs](../lessons/my-gpt/Kernels.cs)
 
 ```mermaid
 flowchart LR
@@ -139,7 +139,7 @@ flowchart LR
 
 ## 6. 用 CPU 建立可獨立核對的答案
 
-執行 `check` 時，同一組權重與字元編號也會送進 CPU 版本。`Reference.Predict` 使用雙精度數字與二維陣列，直接照數學定義重算預測。它能用來比對 GPU 的數值和索引。把單個權重稍微調高與調低，再比兩次預測得到的 loss，也能獨立估計該權重的梯度。[Reference.cs](../lessons/miniGPT/Reference.cs) · [Checks.cs](../lessons/miniGPT/Checks.cs)
+執行 `check` 時，同一組權重與字元編號也會送進 CPU 版本。`Reference.Predict` 使用雙精度數字與二維陣列，直接照數學定義重算預測。它能用來比對 GPU 的數值和索引。把單個權重稍微調高與調低，再比兩次預測得到的 loss，也能獨立估計該權重的梯度。[Reference.cs](../lessons/my-gpt/Reference.cs) · [Checks.cs](../lessons/my-gpt/Checks.cs)
 
 ```mermaid
 flowchart LR

@@ -1,4 +1,4 @@
-namespace MiniGPT;
+namespace MyGpt;
 
 // 小矩陣 CPU 參考答案。用 double 與二維索引，讓 CUDA 的索引錯誤能被找到。
 internal static class Reference

@@ -1,6 +1,6 @@
 using ILGPU.Runtime;
 
-namespace MiniGPT;
+namespace MyGpt;
 
 internal static class Checks
 {

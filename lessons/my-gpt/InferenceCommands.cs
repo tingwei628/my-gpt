@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 
-namespace MiniGPT;
+namespace MyGpt;
 
 internal static class InferenceCommands
 {

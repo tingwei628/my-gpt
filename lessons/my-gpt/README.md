@@ -1,6 +1,6 @@
-# 從矩陣乘法到可續訓的 miniGPT
+# 從矩陣乘法到可續訓的 my-gpt
 
-[命令與推論函式圖解](../../docs/functions.md) · [模型與 GPU 函式圖解](../../docs/model-functions.md)。可先讀每課的小圖，再沿同名函式展開。miniGPT 模型計算候選字元分數，推論引擎負責載入、編碼、選字與反覆生成；兩者的配合見[專案總覽](../../README.md)。
+[命令與推論函式圖解](../../docs/functions.md) · [模型與 GPU 函式圖解](../../docs/model-functions.md)。可先讀每課的小圖，再沿同名函式展開。my-gpt 模型計算候選字元分數，推論引擎負責載入、編碼、選字與反覆生成；兩者的配合見[專案總覽](../../README.md)。
 
 在專案根目錄依序執行以下各課。硬體與 .NET 設定沿用[第 0 課](../00-cuda/README.md)。每一個指令都是一次獨立的程式執行。
 
@@ -21,7 +21,7 @@ flowchart TD
 
 上一課用目前字元查出一整列分數。這次改用一組數字表示每個位置，並用同一組權重替各位置計分。留意哪一列對應輸入位置、哪一欄對應候選字。
 
-執行 `dotnet run --project lessons/miniGPT -- math`。假設兩個位置的輸入分別是 [1,2] 和 [3,4]，第一個候選字的權重是 [2,1]，第二個是 [0,3]。第一個位置給兩個候選字的分數就是 1×2+2×1=4、1×0+2×3=6。先自己算第二個位置，再對照 GPU 印出的四個分數 [4,6,10,12]。這個小程式先驗算矩陣乘法；當它用於模型輸出層、每欄對應一個字元時，分數就稱為 **logit**，數值可以大於 1。
+執行 `dotnet run --project lessons/my-gpt -- math`。假設兩個位置的輸入分別是 [1,2] 和 [3,4]，第一個候選字的權重是 [2,1]，第二個是 [0,3]。第一個位置給兩個候選字的分數就是 1×2+2×1=4、1×0+2×3=6。先自己算第二個位置，再對照 GPU 印出的四個分數 [4,6,10,12]。這個小程式先驗算矩陣乘法；當它用於模型輸出層、每欄對應一個字元時，分數就稱為 **logit**，數值可以大於 1。
 
 回想上一課的 softmax。假如三個候選字的機率是 [0.1,0.6,0.3]，正解是第二個字，交叉熵就是 −ln(0.6) ≈ 0.511。若模型把正解的機率提高到 0.9，loss 會變為多少？手算可用 −ln(0.9) ≈ 0.105 核對。[GPU 算子](Kernels.cs) 的 Linear 算分數，Loss 用等價、數值較穩定的公式計算每個位置的 loss。
 
@@ -40,7 +40,7 @@ flowchart TD
 
 這一課往輸出端的前一步看。因果注意力讓每個位置先讀取已出現的字，更新表示該位置的向量，隨後再使用上一課的線性運算來預測。
 
-執行 `dotnet run --project lessons/miniGPT -- attention`。輸入是 abc，以 0、1、2 表示。每個字有一列 8 個數字，稱為嵌入向量。先將字元嵌入和位置嵌入相加，再從同一列算出三組向量：Q 表示這個位置要尋找的資訊，K 用來和 Q 算相似度，V 是可讀取的內容。
+執行 `dotnet run --project lessons/my-gpt -- attention`。輸入是 abc，以 0、1、2 表示。每個字有一列 8 個數字，稱為嵌入向量。先將字元嵌入和位置嵌入相加，再從同一列算出三組向量：Q 表示這個位置要尋找的資訊，K 用來和 Q 算相似度，V 是可讀取的內容。
 
 這個練習把 8 個數字拆給兩個頭，每個頭 4 個。用 Q 與各個 K 的內積除以 √4 得到分數，把未來位置排除後做 softmax，再依這些機率加權平均 V。程式會印出第一個頭的 3×3 機率表。列代表目前字，欄代表要讀取的字。第一列應是 [1,0,0]，第二列的 c 欄應為 0。找出第二列必定為零的位置，再檢查第三列的總和是否接近 1（輸出取到小數第三位）。
 
@@ -61,7 +61,7 @@ flowchart TD
 
 上一課讀的是一次前向計算。訓練還需要知道每一組權重該怎麼改，因此要把第 1 課的一個梯度，擴展到整個 Transformer 的參數。這次用小模型檢查梯度、未來字元的影響，以及更新後的結果。
 
-執行 `dotnet run --project lessons/miniGPT -- check`。這一課用兩組各四個位置的小序列。先看 [CPU 參考答案](Reference.cs) 的二維陣列，再看 [數值檢查](Checks.cs) 怎麼用同一組權重比較 GPU 分數和 loss。
+執行 `dotnet run --project lessons/my-gpt -- check`。這一課用兩組各四個位置的小序列。先看 [CPU 參考答案](Reference.cs) 的二維陣列，再看 [數值檢查](Checks.cs) 怎麼用同一組權重比較 GPU 分數和 loss。
 
 1. 前向計算依序產生分數與 loss。反向傳播沿相反順序，逐層算出「輸入稍微增加時，loss 會變多少」。同一個字出現兩次時，兩個位置都會對它的嵌入權重貢獻梯度。
 2. 檢查器在每組參數選一個元素，先把權重加一點，再減一點。兩次 CPU loss 的差除以權重的差，是獨立的斜率估計，應接近 GPU 算出的梯度。
@@ -87,16 +87,16 @@ flowchart TD
 在專案根目錄使用一個新的檔名。以下指令共訓練 125 步。
 
 ```powershell
-dotnet run --project lessons/miniGPT -- train lessons/miniGPT/my-first.ckpt 100
-dotnet run --project lessons/miniGPT -- generate lessons/miniGPT/my-first.ckpt "the "
-dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/my-first.ckpt 25
+dotnet run --project lessons/my-gpt -- train lessons/my-gpt/my-first.ckpt 100
+dotnet run --project lessons/my-gpt -- generate lessons/my-gpt/my-first.ckpt "the "
+dotnet run --project lessons/my-gpt -- resume lessons/my-gpt/my-first.ckpt 25
 ```
 
 第一條指令配置 2 層、4 個頭、嵌入寬度 64 的模型。每步讀 1 段 64 字元，每個位置的答案是原文中的下一字。例如原文 abcd，輸入 abc，答案 bcd。GPU buffers 表示程式配置的張量空間，驅動程式還會使用其他顯存。暖機後的 tokens/s 是每秒處理多少個訓練位置。比較開頭與結尾的驗證 loss，再看模型能否續寫出語料裡的單字。教材語料由簡單英文句型組成，適合觀察模型學會拼字及句型的過程。
 
 第二條指令重新讀取檔案，從開頭文字逐次挑分數最高的字；超過 64 個位置時只讀最近 64 個。這種選字法稱為貪婪解碼，同一個 checkpoint 與開頭會得到相同文字。試著把開頭換成 `"the fox "`，比較兩次續寫。第三條指令應印出 step 101 到 step 125 的進度。它會接著使用儲存的權重、AdamW 狀態、步數及資料順序。
 
-可以把自己的 UTF-8 純文字檔路徑放在步數後，例如 `dotnet run --project lessons/miniGPT -- train lessons/miniGPT/custom.ckpt 100 my-text.txt 4`，最後的 4 是每批段數。續訓時也要提供同一份文本，例如 `dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/custom.ckpt 25 my-text.txt`。教材字表支援 2 至 1024 個單一 UTF-16 單元的字元，包含常見中文字；含 emoji 或擴展漢字等代理對的語料會在訓練前提示。資料依原順序切分，約前九成用來抽訓練視窗、後一成驗證。兩段各需至少 65 字元，驗證用字必須曾在訓練段出現。內建[語料](corpus.txt)保留未出現在訓練段的完整句子組合。
+可以把自己的 UTF-8 純文字檔路徑放在步數後，例如 `dotnet run --project lessons/my-gpt -- train lessons/my-gpt/custom.ckpt 100 my-text.txt 4`，最後的 4 是每批段數。續訓時也要提供同一份文本，例如 `dotnet run --project lessons/my-gpt -- resume lessons/my-gpt/custom.ckpt 25 my-text.txt`。教材字表支援 2 至 1024 個單一 UTF-16 單元的字元，包含常見中文字；含 emoji 或擴展漢字等代理對的語料會在訓練前提示。資料依原順序切分，約前九成用來抽訓練視窗、後一成驗證。兩段各需至少 65 字元，驗證用字必須曾在訓練段出現。內建[語料](corpus.txt)保留未出現在訓練段的完整句子組合。
 
 現在你可以用步數解釋訓練如何從上次中斷的地方繼續，也可以用驗證 loss 比較訓練前後的預測。接下來保留這份 checkpoint，看看固定權重時，如何從一段開頭逐字生成，以及如何替一段已有答案的文字評分。
 
@@ -112,17 +112,17 @@ flowchart TD
     C -.-> E["延伸練習：比較不同學習率下的續寫與驗證 loss"]
 ```
 
-先在專案根目錄執行 `.\minigpt.cmd chat lessons/miniGPT/my-first.ckpt`，載入上一課保存的模型並進入互動模式。輸入 `the fox ` 並按 Enter，模型逐字顯示新增內容，接著回到輸入提示。它會在同一個 session 中重複使用 GPU 權重。`/length 60` 可設定每次續寫 60 個字元，`/info` 顯示字表，`/exit` 結束程式。每次輸入是獨立的文字開頭。只有一個 checkpoint 時，也能直接執行 `.\minigpt.cmd` 自動載入。
+先在專案根目錄執行 `.\my-gpt.cmd chat lessons/my-gpt/my-first.ckpt`，載入上一課保存的模型並進入互動模式。輸入 `the fox ` 並按 Enter，模型逐字顯示新增內容，接著回到輸入提示。它會在同一個 session 中重複使用 GPU 權重。`/length 60` 可設定每次續寫 60 個字元，`/info` 顯示字表，`/exit` 結束程式。每次輸入是獨立的文字開頭。只有一個 checkpoint 時，也能直接執行 `.\my-gpt.cmd` 自動載入。
 
 `InferenceSession` 負責載入權重、把文字轉成編號、呼叫 `Forward`、逐字挑選分數最高的候選字，並把結果還原成文字。你可以在同一個 session 依序傳入不同開頭。`Forward` 計算到候選分數就回傳。生成時使用 batch 1，載入既有訓練 checkpoint 時會略過動量，省下梯度與動量的 GPU 空間。續訓仍由 `resume` 載入完整狀態。
 
-先用第 5 課儲存的模型執行。checkpoint 保存在訓練電腦，可把下面路徑換成自己要比較的模型。本機目前最佳版本位於 `lessons/miniGPT/quality-step1001-lr0.0003-22f75508d3.ckpt`。
+先用第 5 課儲存的模型執行。checkpoint 保存在訓練電腦，可把下面路徑換成自己要比較的模型。本機目前最佳版本位於 `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt`。
 
 ```powershell
-$model = "lessons/miniGPT/my-first.ckpt"
-dotnet run --project lessons/miniGPT -- generate $model "the fox " 60
-dotnet run --project lessons/miniGPT -- benchmark $model 100
-dotnet run --project lessons/miniGPT -- score $model lessons/miniGPT/corpus.txt
+$model = "lessons/my-gpt/my-first.ckpt"
+dotnet run --project lessons/my-gpt -- generate $model "the fox " 60
+dotnet run --project lessons/my-gpt -- benchmark $model 100
+dotnet run --project lessons/my-gpt -- score $model lessons/my-gpt/corpus.txt
 ```
 
 第一個指令新增 60 個字元。省略數量時預設為 100，設成 0 會直接回傳開頭。這份模型沒有句尾停止 token，所以輸出可能在字中間截斷。相同的模型、開頭和長度會得到相同的貪婪生成結果。輸入需在模型字表內。
@@ -146,10 +146,10 @@ dotnet run --project lessons/miniGPT -- score $model lessons/miniGPT/corpus.txt
 **練習：比較學習率。** 學習率控制每次更新權重的步幅。從同一個模型複製兩份，各跑相同步數，才能把差異歸因到步幅。以下以第 5 課建立的檔案為起點，請使用尚未存在的副本名稱：
 
 ```powershell
-$source = (Resolve-Path -LiteralPath "lessons/miniGPT/my-first.ckpt").Path
-$trial = Join-Path $PWD.Path "lessons/miniGPT/trial-small.ckpt"
+$source = (Resolve-Path -LiteralPath "lessons/my-gpt/my-first.ckpt").Path
+$trial = Join-Path $PWD.Path "lessons/my-gpt/trial-small.ckpt"
 [IO.File]::Copy($source, $trial)
-dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/trial-small.ckpt 100 --lr 0.0003
+dotnet run --project lessons/my-gpt -- resume lessons/my-gpt/trial-small.ckpt 100 --lr 0.0003
 ```
 
 另做一份副本，把學習率改成 0.003，再比較兩次的「訓練後驗證 loss」及同一句開頭的生成結果。`--lr` 只套用於本次指令，省略時使用預設值 0.003。要接著用較小步幅訓練，每次續訓都要指定相同的 `--lr`。

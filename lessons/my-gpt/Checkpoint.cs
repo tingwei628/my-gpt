@@ -1,6 +1,6 @@
 using ILGPU.Runtime;
 
-namespace MiniGPT;
+namespace MyGpt;
 
 internal static class Checkpoint
 {
@@ -12,7 +12,7 @@ internal static class Checkpoint
         {
             using (var w = new BinaryWriter(File.Create(temporary)))
             {
-                w.Write("MiniGPT/1");
+                w.Write("my-gpt/1");
                 var c = model.Config;
                 foreach (int value in new[] { c.Batch, c.T, c.D, c.Heads, c.Layers, model.Step }) w.Write(value);
                 w.Write(alphabet);
@@ -33,7 +33,9 @@ internal static class Checkpoint
     public static Model Load(string path, out string alphabet, out string dataHash, bool forTraining = true)
     {
         using var r = new BinaryReader(File.OpenRead(path));
-        if (r.ReadString() != "MiniGPT/1") throw new InvalidDataException("不支援的 checkpoint。");
+        string format = r.ReadString();
+        // 相容更名前產生的權重，讓既有訓練成果能繼續使用。
+        if (format is not ("my-gpt/1" or "MiniGPT/1")) throw new InvalidDataException("不支援的 checkpoint。");
         var c = new Config(r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32(), r.ReadInt32());
         int step = r.ReadInt32();
         alphabet = r.ReadString();
