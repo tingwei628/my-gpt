@@ -97,7 +97,7 @@ dotnet run --project lessons/01-learning/Learning.csproj
 
 ### Start interactive chat
 
-If the local best checkpoint exists, start the interactive CLI:
+The repository includes the best lesson checkpoint (step 1001, about 1.23 MiB). After cloning, start the interactive CLI:
 
 ```powershell
 .\my-gpt.cmd
@@ -128,7 +128,7 @@ These examples specify the checkpoint directly, so each command can be copied an
 
 ### Create a local checkpoint
 
-Checkpoint files are excluded from Git. If you cloned the source and do not have a checkpoint, train a small quick-start model:
+The best lesson checkpoint is included in Git. Other checkpoints produced during training are ignored. To train your own quick-start model, use a new filename:
 
 ```powershell
 .\my-gpt.cmd train lessons/my-gpt/quickstart.ckpt 100
@@ -143,7 +143,7 @@ The destination name must not already exist. One hundred steps demonstrate the t
 |---|---|
 | `README.md` / `README.zh-TW.md` | English and Traditional Chinese project guides, architecture, usage, and file map |
 | `my-gpt.cmd` | Windows launcher that locates the project relative to itself and forwards arguments |
-| `.gitignore` | Excludes build outputs, IDE state, checkpoints, environment files, and credentials |
+| `.gitignore` | Excludes build outputs, IDE state, generated checkpoints (except the bundled best model), environment files, and credentials |
 | `lessons/00-cuda/` | Standalone ILGPU vector-add lesson and its guide |
 | `lessons/01-learning/` | Standalone weight-update and bigram lesson and its guide |
 | `lessons/my-gpt/Program.cs` | Command dispatch, dataset preparation, training, and resume flow |

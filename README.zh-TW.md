@@ -191,7 +191,7 @@ C# 主程式在 CPU 上負責命令、文字編碼、抽取資料與讀寫檔案
 
 所有命令都從專案根目錄執行。第 0、1 課由各自的專案啟動，第 2 課開始可使用 `.\my-gpt.cmd`：
 
-先確認啟動檔在目前目錄。下面第一個檢查應回傳 `True`，第二個檢查用來確認本機最佳權重是否存在：
+先確認啟動檔在目前目錄。下面第一個檢查應回傳 `True`，第二個檢查用來確認隨附最佳權重是否存在：
 
 ```powershell
 Test-Path -LiteralPath ".\my-gpt.cmd"
@@ -231,25 +231,25 @@ dotnet run --project lessons/01-learning/Learning.csproj
 
 ### 首次下載時建立模型
 
-checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複製既有權重，或先建立一份練習模型：
+專案已包含最佳教材權重（step 1001，約 1.23 MiB），下載後可直接使用上面的互動與生成指令。其他自行訓練產生的 checkpoint 仍由 `.gitignore` 排除。若要從頭練習，請使用新的檔名：
 
 ```powershell
 .\my-gpt.cmd train lessons/my-gpt/quickstart.ckpt 100
-.\my-gpt.cmd
+.\my-gpt.cmd chat lessons/my-gpt/quickstart.ckpt
 ```
 
 100 步用來觀察訓練流程，生成品質需搭配驗證與實際續寫判斷。第 5 課會進一步解釋如何保存、比較與續訓。指定新檔名時，該檔案需尚未存在。
 
 ## 每個檔案的用途
 
-下表包含清理後的原始碼、教材、設定及本機模型。檔名皆相對於專案根目錄。
+下表包含清理後的原始碼、教材、設定及隨附模型。檔名皆相對於專案根目錄。
 
 | 檔案 | 用途與使用者 |
 |---|---|
 | `README.md` | 英文專案入口、架構、操作與完整檔案清單 |
 | `README.zh-TW.md` | 繁體中文專案入口、架構、操作與完整檔案清單 |
 | `my-gpt.cmd` | Windows 啟動腳本，定位 my-gpt 專案並轉交參數 |
-| `.gitignore` | 專案共用忽略規則，排除建置輸出、IDE 狀態、checkpoint、環境變數與憑證 |
+| `.gitignore` | 專案共用忽略規則，排除建置輸出、IDE 狀態、自行產生的 checkpoint（隨附最佳權重除外）、環境變數與憑證 |
 | `docs/functions.zh-TW.md` / `docs/functions.en.md` | 命令、互動、推論、存檔與驗證函式圖解，中英文版 |
 | `docs/model-functions.zh-TW.md` / `docs/model-functions.en.md` | 模型組裝、前反向計算、GPU 核心和 CPU 參考函式圖解，中英文版 |
 | `lessons/00-cuda/Lesson00.csproj` | 第 0 課 .NET 專案，引用 ILGPU |
@@ -270,13 +270,13 @@ checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複�
 | `lessons/my-gpt/Reference.cs` | C# double 與二維陣列的獨立 CPU 答案，供 Checks 對照 GPU |
 | `lessons/my-gpt/corpus.txt` | 預設英文語料，64 個不同句型組合，依程式切分為訓練與驗證資料 |
 | `lessons/my-gpt/README.zh-TW.md` | 第 2 至 6 課的矩陣、注意力、驗收、訓練與推論教材 |
-| `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt` | 本機最佳模型，供生成、評分與續訓載入 |
+| `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt` | 隨附最佳模型，供生成、評分與續訓載入 |
 
 `Checks.cs` 與 `Reference.cs` 提供教學驗收所需的獨立答案。第 0、1 課保留從基礎理解 GPT 的學習順序，各自可單獨執行。
 
 ## 權重檔保存了什麼
 
-本機最佳 checkpoint 的步數為 1001、訓練 batch 為 4，最後一段續訓學習率為 0.0003，當時驗證 loss 為 0.0786。這個值來自已多次用來調參的教材驗證資料。
+隨附最佳 checkpoint 的步數為 1001、訓練 batch 為 4，最後一段續訓學習率為 0.0003，當時驗證 loss 為 0.0786。這個值來自已多次用來調參的教材驗證資料。
 
 `.ckpt` 保存格式版本、模型尺寸、步數、字表、語料 SHA-256，以及每組參數的權重和 AdamW 兩組動量。生成時提供權重與開頭即可，續訓還需相同語料。
 
@@ -286,7 +286,7 @@ checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複�
 
 以下命令從專案根目錄執行。`my-gpt.cmd` 可轉交所有 my-gpt 指令。如果目前畫面顯示「你>」，先輸入 `/exit` 回到 PowerShell。
 
-生成、固定提示詞評估、文本評分及副本續訓範例使用本機最佳權重。若你是從頭訓練，可把來源模型路徑換成自己的 `lessons/my-gpt/my-first.ckpt` 或 `lessons/my-gpt/quickstart.ckpt`。
+生成、固定提示詞評估、文本評分及副本續訓範例使用隨附最佳權重。若你是從頭訓練，可把來源模型路徑換成自己的 `lessons/my-gpt/my-first.ckpt` 或 `lessons/my-gpt/quickstart.ckpt`。
 
 ```powershell
 # 單次續寫 60 個字元

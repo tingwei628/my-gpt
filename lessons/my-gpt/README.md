@@ -116,7 +116,7 @@ From the repository root, run `my-gpt.cmd chat lessons/my-gpt/my-first.ckpt` to 
 
 `InferenceSession` loads weights, encodes text as IDs, calls `Forward`, chooses the highest-scoring candidate character, and decodes the result back to text. You can give it different prompts in the same session. Forward returns logits without calculating loss. Inference uses batch 1 and skips optimizer state, gradients, and their GPU allocations. The `resume` command loads full state for continued training.
 
-If you are still at the interactive `You>` prompt, enter `/exit` to return to PowerShell before running these commands. The checkpoint is local to the training computer; replace the path with the model you want to compare. The current best local model is `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt`.
+If you are still at the interactive `You>` prompt, enter `/exit` to return to PowerShell before running these commands. The Lesson 5 checkpoint is created locally. The repository also includes the best lesson model at `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt`.
 
 ```powershell
 .\my-gpt.cmd generate "lessons/my-gpt/my-first.ckpt" "the fox " 60

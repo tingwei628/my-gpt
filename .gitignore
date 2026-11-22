@@ -13,6 +13,7 @@
 
 # Local model checkpoints and training artifacts
 *.ckpt
+!/lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt
 *.ckpt.lock
 *.tmp
 *.log

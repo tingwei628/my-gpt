@@ -118,7 +118,7 @@ flowchart TD
 
 `InferenceSession` 負責載入權重、把文字轉成編號、呼叫 `Forward`、逐字挑選分數最高的候選字，並把結果還原成文字。你可以在同一個 session 依序傳入不同開頭。`Forward` 計算到候選分數就回傳。生成時使用 batch 1，載入既有訓練 checkpoint 時會略過動量，省下梯度與動量的 GPU 空間。續訓仍由 `resume` 載入完整狀態。
 
-先用第 5 課儲存的模型執行。若仍在互動介面的「你>」提示，先輸入 `/exit` 回到 PowerShell，再執行下面的命令。checkpoint 保存在訓練電腦，可把下面路徑換成自己要比較的模型。本機目前最佳版本位於 `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt`。
+先用第 5 課儲存的模型執行。若仍在互動介面的「你>」提示，先輸入 `/exit` 回到 PowerShell，再執行下面的命令。第 5 課的 checkpoint 由你自行訓練建立，也可把下面路徑換成專案隨附的最佳教材權重： `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt`。
 
 ```powershell
 .\my-gpt.cmd generate "lessons/my-gpt/my-first.ckpt" "the fox " 60
