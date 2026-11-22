@@ -1,24 +1,23 @@
-# 第 1 課：一次更新能學到什麼？
+# Lesson 1: What Can One Update Learn?
 
-[本課程式區塊圖解](../../docs/functions.md) 可對照單權重更新與 bigram 兩段頂層敘述。
+[Function walkthrough](../../docs/functions.en.md) connects to the top-level examples for a single weight and a bigram.
 
 ```mermaid
 flowchart TD
-    A["輸入 2、目標 4"] --> B["Program.cs 頂層：更新 weight 得 1.4"]
-    C["語料 abcab"] --> D["頂層 for 迴圈：更新 scores"]
-    D --> E["foreach：印出 a→b、b→c、c→a"]
-    E -.-> F["第 2 課：用矩陣計算候選分數"]
+    A["Input 2, target 4"] --> B["Top-level Program.cs: update weight to 1.4"]
+    C["Corpus abcab"] --> D["Top-level loop: update scores"]
+    D --> E["foreach: print a→b, b→c, c→a"]
+    E -.-> F["Lesson 2: use a matrix to score candidates"]
 ```
 
-上一課把指定的加法交給 GPU。這一課用第二個獨立範例在 CPU 上追蹤學習的過程：先讓一個乘數隨誤差改變，再讓三個候選字的分數隨正確答案改變。你可以把程式中的每次更新和手算一一對上。[回看第 0 課](../00-cuda/README.md)
+Lesson 0 sent a specified addition to the GPU. This second standalone example runs on the CPU so you can follow learning in small steps: first adjust one multiplier based on its error, then adjust scores for three next-character candidates. You can compare every update in the program with a hand calculation. [Review Lesson 0](../00-cuda/README.md)
 
-在專案根目錄執行 `dotnet run --project lessons/01-learning`。先猜：輸入 2，想得到 4，目前乘上的權重是 1。應該把它調大還是調小？
+From the repository root, run `dotnet run --project lessons/01-learning`. Before running it, predict: input is 2, the target is 4, and the current weight is 1. Should the weight move up or down?
 
-程式先算出預測 2、誤差 −2、梯度 −4。梯度描述權重稍微增加時 loss 往哪裡變。往梯度的反方向走，更新後權重是 1.4，loss 從 2.00 降到 0.72。梯度的算式是（預測 − 目標）× 輸入，即 (2 − 4) × 2 = −4。試著把 `weight -= 0.1 * gradient` 裡的 0.1 改成 0，預測 loss 的變化。
+The program predicts 2, gives an error of −2, and calculates a gradient of −4. The gradient tells us which way the loss changes when the weight increases slightly. Moving in the opposite direction gives a new weight of 1.4, and loss falls from 2.00 to 0.72. The gradient is (prediction − target) × input, or (2 − 4) × 2 = −4. Try changing `0.1` in `weight -= 0.1 * gradient` to `0` and predict what happens to the loss.
 
-接下來只看前一個字來猜下一個字，稱為 bigram。用手把 `abcab` 的相鄰字配對，會得到 ab、bc、ca、ab。程式替每個目前字保存三個候選分數，用 softmax 將分數轉成總和為 1 的機率。更新時拉高正解的分數、拉低其他分數。最後應印出 a → b、b → c、c → a。把文本換成 acbac 再跑，觀察三個箭頭。
+Next, predict a character using only the previous character. This is called a **bigram**. Pair adjacent characters in `abcab` by hand: `ab`, `bc`, `ca`, `ab`. The program stores three candidate scores for each current character and uses softmax to turn scores into probabilities that sum to 1. During an update it raises the correct candidate's score and lowers the others. It should print a → b, b → c, and c → a. Replace the text with `acbac` and run it again to observe the three transitions.
 
-看到 a → b 時，試著解釋：哪兩個訓練例子拉高了 b 的分數？在 bigram 裡，a 對應分數表中的一列。GPT 需要讓這一列分數隨前文改變。下一課先做其中一步：把代表一個位置的數字乘上可學習的權重，算出各候選字的分數。
+When you see a → b, ask which training examples raised the score for b. A bigram stores one row of scores for each character. GPT needs to let those scores depend on more context. The next lesson starts with one part of this idea: multiply the numbers representing a position by learnable weights to score candidate characters.
 
-[下一課：用矩陣算候選字分數](../my-gpt/README.md#lesson-2) · [專案總覽](../../README.md)
-
+[Next: Lesson 2, score candidates with a matrix](../my-gpt/README.md#lesson-2) · [繁體中文](README.zh-TW.md) · [Project overview](../../README.md)

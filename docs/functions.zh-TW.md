@@ -1,6 +1,6 @@
 # 從命令列到文字輸出的函式圖解
 
-先讀 [my-gpt 與推論引擎](../README.md)，再沿這份文件追蹤「載入一次、生成一次、評分一次」。[模型函式圖解](model-functions.md) 接著說明 GPU 計算。
+先讀 [my-gpt 與推論引擎](../README.zh-TW.md)，再沿這份文件追蹤「載入一次、生成一次、評分一次」。[模型函式圖解](model-functions.zh-TW.md) 接著說明 GPU 計算。 [English](functions.en.md)
 
 每張圖把相關函式放在一起，每一列說明一個具名函式的輸入、動作與輸出。建構式負責建立物件，Dispose 負責釋放資源。區域函式會標出它所屬的外層函式。record 是保存結果或設定的資料型別。
 
@@ -199,4 +199,4 @@ flowchart TD
 
 CpuLoss 會讀到外層被暫時加減的權重，因此能用兩次獨立 loss 估計該元素的斜率。檢查結束前會把該元素還原。[檢查程式](../lessons/my-gpt/Checks.cs)
 
-接著閱讀 [Model、Kernels 與 Reference 的函式圖解](model-functions.md)，把 Model.Forward 展開到每個 GPU 運算。
+接著閱讀 [Model、Kernels 與 Reference 的函式圖解](model-functions.zh-TW.md)，把 Model.Forward 展開到每個 GPU 運算。

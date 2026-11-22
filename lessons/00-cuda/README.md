@@ -1,46 +1,48 @@
-# 第 0 課　在筆電 GPU 上算出第一個答案
+# Lesson 0: Run Your First Calculation on the Laptop GPU
 
-[本課函式圖解](../../docs/functions.md) 可對照 Main 與 Add 的輸入、處理及輸出。
+[Function walkthrough](../../docs/functions.en.md) shows the inputs and outputs of `Main` and `Add`.
 
 ```mermaid
 flowchart TD
-    A["Main：準備 [1,2] 和 [3,4]"] --> B["Add：GPU 逐項相加"]
-    B --> C["GetAsArray1D：取回 [4,6]，由 CPU 驗算"]
-    C -.-> D["第 1 課：用手算驗證一次學習更新"]
+    A["Main: prepare [1,2] and [3,4]"] --> B["Add: add each pair on the GPU"]
+    B --> C["GetAsArray1D: read back [4,6] and check on the CPU"]
+    C -.-> D["Lesson 1: check one learning update by hand"]
 ```
 
-這是第一個獨立範例。從兩組數字開始，你能用紙筆先算出答案，再確認 C# 真的把相同的計算交給了 NVIDIA 顯卡。之後在 GPT 中，一個位置也會有一組數字，GPU 會替許多位置同時計算。
+This is the first standalone example. Start with two small arrays, calculate the answer by hand, then check that C# performed the same calculation on an NVIDIA GPU. In GPT, each position also has a group of numbers, and the GPU calculates many positions at once.
 
-1. 在裝有 NVIDIA 顯卡與驅動程式的 Windows 電腦上開啟 PowerShell。輸入 `nvidia-smi`，在裝置表中找到顯卡名稱。`dotnet --list-sdks` 應列出 10.x 或支援 net10.0 的更新 SDK，`dotnet --list-runtimes` 應列出 Microsoft.NETCore.App 10.x。若缺少環境，可安裝 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)。
-2. 在專案根目錄（含 my-gpt.cmd 的資料夾）執行下列指令。第一次執行需要 NuGet 套件快取或網路連線，以取得 ILGPU。
+## Run the lesson
+
+1. Open PowerShell on a Windows computer with an NVIDIA GPU and driver. Run `nvidia-smi` and find the GPU in the device list. `dotnet --list-sdks` should include version 10.x or a later SDK that supports `net10.0`; `dotnet --list-runtimes` should include Microsoft.NETCore.App 10.x. If needed, install the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
+2. From the repository root (the folder containing `my-gpt.cmd`), run this command. The first run needs the ILGPU NuGet package in the local cache or access to download it.
 
    ```powershell
    dotnet run --project lessons/00-cuda/Lesson00.csproj
    ```
 
-   若提示找不到專案，用 `Test-Path .\lessons\00-cuda\Lesson00.csproj` 檢查目前位置；在正確的資料夾會得到 `True`。
+   If the project cannot be found, run `Test-Path .\lessons\00-cuda\Lesson00.csproj`. It should return `True` when PowerShell is in the repository root.
 
-3. 在目標筆電上，預期看到以下三行。第一行列出找到的裝置，第二行是程式實際用來執行加法的裝置。
+3. On the target laptop, expect output like this. The first line lists a detected device; the second identifies the device used for the addition.
 
    ```text
-   找到 CUDA 裝置：NVIDIA GeForce GTX 1650 with Max-Q Design
-   執行裝置：NVIDIA GeForce GTX 1650 with Max-Q Design (CUDA)
-   結果：[4,6]
+   CUDA device found: NVIDIA GeForce GTX 1650 with Max-Q Design
+   Running on: NVIDIA GeForce GTX 1650 with Max-Q Design (CUDA)
+   Result: [4,6]
    ```
 
-打開 [這一課的程式](Program.cs)，從 `Main` 看起。`left` 和 `right` 是筆電主記憶體裡的兩組整數。`Allocate1D(left)` 和 `Allocate1D(right)` 各把一組數字複製到顯卡記憶體。`Add` 是在 GPU 上執行的函式，稱為 **kernel**。呼叫 `add(left.Length, ...)` 會交給它兩個位置，各自執行同一行加法。
+Open [the lesson program](Program.cs) and start with `Main`. `left` and `right` are integer arrays in the laptop's main memory. `Allocate1D(left)` and `Allocate1D(right)` each copy an array to GPU memory. `Add` is a function that runs on the GPU, called a **kernel**. Calling `add(left.Length, ...)` assigns it two positions, each running the same addition.
 
-`LoadAutoGroupedStreamKernel` 把上方的 `Add` 準備成可從主程式呼叫的 GPU 程式。這次的工作數量是 `left.Length`，也就是下表的兩列。
+`LoadAutoGroupedStreamKernel` prepares `Add` as a GPU program callable by the main program. The amount of work is `left.Length`, or the two rows below.
 
-| 位置 index（從 0 開始） | left | right | result |
-|---|---:|---:|---:|
+| Index (starts at 0) | left | right | result |
+|---:|---:|---:|---:|
 | 0 | 1 | 3 | 4 |
 | 1 | 2 | 4 | 6 |
 
-`Synchronize()` 等待 GPU 算完，`GetAsArray1D()` 把結果帶回主記憶體。最後的迴圈用 CPU 逐項驗算。若程式顯示找不到 CUDA 裝置，先看 `nvidia-smi` 能否列出顯卡。若看到其他 CUDA 顯卡的名稱，表示加法是在那張卡上執行。
+`Synchronize()` waits for the GPU to finish. `GetAsArray1D()` copies the result back to main memory. The final loop checks each value on the CPU. If no CUDA device is found, first check whether `nvidia-smi` lists the GPU. If another CUDA GPU is named, the addition ran on that device.
 
-**動手試**　把 `right` 的第二個數字從 4 改成 10。先寫下你預測會改變的位置和數值，再執行同一條指令核對。完成後把 10 改回 4，方便下次重現。
+**Try it:** Change the second number in `right` from 4 to 10. Predict which result changes, then run the same command to check. Change 10 back to 4 afterward so the lesson remains reproducible.
 
-如果你能指出哪一行將數字送上 GPU、哪一行把結果帶回來，就能追蹤一次 GPU 計算。接著換一個問題：加法規則由人寫好，如果我們只給輸入與正確答案，程式怎麼學會調整數字？
+If you can identify the line that sends numbers to the GPU and the line that reads the result back, you can trace a GPU calculation. Next, ask a different question: people write the addition rule, but how can a program adjust a number when given inputs and correct answers?
 
-[下一課：從誤差調整一個權重](../01-learning/README.md) · [專案總覽](../../README.md)
+[Next: Lesson 1, adjust a weight from the error](../01-learning/README.md) · [Traditional Chinese](README.zh-TW.md) · [Project overview](../../README.md)
