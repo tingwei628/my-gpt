@@ -29,7 +29,8 @@ internal sealed class Model : IDisposable
     private readonly IdBuffer tokens, targets, positions;
     private readonly Action<Index1D, Op, Shape, Values, ArrayView<float>> forward;
     private readonly Action<Index1D, Op, Shape, Values, ArrayView<float>, ArrayView<float>, int, ArrayView<float>> backward;
-    private readonly Action<Index1D, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<float>, float, float, float> adam;
+    public const float DefaultLearningRate = 0.003f;
+    private readonly Action<Index1D, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<float>, float, float, float, float> adam;
 
     public Model(Config c, int vocab)
     {
@@ -41,7 +42,7 @@ internal sealed class Model : IDisposable
         gpu = (device ?? throw new InvalidOperationException("找不到 CUDA 裝置，請先完成第 0 課。")).CreateCudaAccelerator(context);
         forward = gpu.LoadAutoGroupedStreamKernel<Index1D, Op, Shape, Values, ArrayView<float>>(Kernels.Forward);
         backward = gpu.LoadAutoGroupedStreamKernel<Index1D, Op, Shape, Values, ArrayView<float>, ArrayView<float>, int, ArrayView<float>>(Kernels.Backward);
-        adam = gpu.LoadAutoGroupedStreamKernel<Index1D, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<float>, float, float, float>(Kernels.Adam);
+        adam = gpu.LoadAutoGroupedStreamKernel<Index1D, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<float>, float, float, float, float>(Kernels.Adam);
 
         int rows = c.Batch * c.T, d = c.D;
         tokens = Ids(new int[rows]);
@@ -152,7 +153,7 @@ internal sealed class Model : IDisposable
         }
     }
 
-    public float Train(int[] input, int[] labels)
+    public float Train(int[] input, int[] labels, float learningRate = DefaultLearningRate)
     {
         float loss = Evaluate(input, labels);
         if (!float.IsFinite(loss)) throw new ArithmeticException("loss 超出浮點數範圍。");
@@ -160,7 +161,7 @@ internal sealed class Model : IDisposable
         Step++;
         foreach (var p in Parameters)
             adam(p.Tensor.Value.IntExtent, p.Tensor.Value.View, p.Tensor.Grad.View, p.M.View, p.V.View,
-                1 - MathF.Pow(0.9f, Step), 1 - MathF.Pow(0.999f, Step), p.Decay);
+                1 - MathF.Pow(0.9f, Step), 1 - MathF.Pow(0.999f, Step), p.Decay, learningRate);
         return loss;
     }
 

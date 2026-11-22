@@ -43,6 +43,15 @@ dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/my-first.ckpt 25
 
 ## 筆電實測
 
+**練習：比較學習率。** 學習率控制每次更新權重的步幅。從同一個模型複製兩份，各跑相同步數，才能把差異歸因到步幅。以下以第 5 課建立的檔案為起點，請使用尚未存在的副本名稱：
+
+```powershell
+[IO.File]::Copy("lessons/miniGPT/my-first.ckpt", "lessons/miniGPT/trial-small.ckpt")
+dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/trial-small.ckpt 100 --lr 0.0003
+```
+
+另做一份副本，把學習率改成 0.003，再比較兩次的「訓練後驗證 loss」及同一句開頭的生成結果。`--lr` 只套用於本次指令，省略時使用預設值 0.003。要接著用較小步幅訓練，每次續訓都要指定相同的 `--lr`。
+
 在 GTX 1650 Max-Q 4 GB 的一次實測中，固定預設語料與種子，每批 4 段訓練 500 步，驗證 loss 從 3.1469 降至 0.2053，暖機後約 32,849 tokens/s。模型明確配置了 12.18 MiB 緩衝區。另一次相同配置跑 300 步，以 nvidia-smi 取得 20 次整卡使用量，最高讀值為 63 MiB；取樣間隔內的瞬間用量可能更高。每批 1 段時，連跑 125 步與先跑 100 步、重新啟動後再跑 25 步的 checkpoint，SHA-256 相同。
 
 ## 對照四部影片

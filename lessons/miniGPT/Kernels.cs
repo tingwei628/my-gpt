@@ -167,11 +167,11 @@ public static class Kernels
     }
 
     public static void Adam(Index1D i, ArrayView<float> w, ArrayView<float> grad,
-        ArrayView<float> m, ArrayView<float> v, float correction1, float correction2, float decay)
+        ArrayView<float> m, ArrayView<float> v, float correction1, float correction2, float decay, float learningRate)
     {
         float g = grad[i];
         m[i] = 0.9f * m[i] + 0.1f * g;
         v[i] = 0.999f * v[i] + 0.001f * g * g;
-        w[i] -= 0.003f * (m[i] / correction1 / (XMath.Sqrt(v[i] / correction2) + 1e-8f) + decay * w[i]);
+        w[i] -= learningRate * (m[i] / correction1 / (XMath.Sqrt(v[i] / correction2) + 1e-8f) + decay * w[i]);
     }
 }

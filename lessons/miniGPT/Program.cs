@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using ILGPU.Runtime;
@@ -23,10 +24,18 @@ static int Run(string[] args)
         Console.WriteLine(Generate(loaded, chars, prompt, 100));
         return 0;
     }
+    float learningRate = Model.DefaultLearningRate;
+    if (args.Length >= 5 && args[^2] == "--lr")
+    {
+        if (!float.TryParse(args[^1], NumberStyles.Float, CultureInfo.InvariantCulture, out learningRate)
+            || !float.IsFinite(learningRate) || learningRate <= 0)
+            throw new ArgumentException("--lr 需要大於零的有限數值，例如 0.0003。");
+        args = args[..^2];
+    }
     if (args.Length < 3 || args.Length > 5 || args[0] is not ("train" or "resume") ||
         !int.TryParse(args[2], out int steps) || steps < 1)
     {
-        Console.Error.WriteLine("用法：math | attention | check | train 新檔.ckpt 步數 [語料.txt [batch]] | resume 檔.ckpt 步數 [語料.txt] | generate 檔.ckpt 開頭");
+        Console.Error.WriteLine("用法：math | attention | check | train 新檔.ckpt 步數 [語料.txt [batch]] [--lr 學習率] | resume 檔.ckpt 步數 [語料.txt] [--lr 學習率] | generate 檔.ckpt 開頭");
         return 1;
     }
     string path = args[1];
@@ -53,7 +62,7 @@ static int Run(string[] args)
     int t = model.Config.T;
     if (cut <= t || ids.Length - cut <= t) throw new InvalidDataException($"訓練段及後 10% 驗證段各需至少 {t + 1} 個字元。");
     Console.WriteLine($"CUDA {model.Device} | 模型配置的 GPU buffers {model.BufferBytes / 1048576.0:F2} MiB");
-    Console.WriteLine($"訓練前驗證 loss {Validation():F4}");
+    Console.WriteLine($"學習率 {learningRate}，訓練前驗證 loss {Validation():F4}");
     var watch = Stopwatch.StartNew();
     for (int i = 0; i < steps; i++)
     {
@@ -67,7 +76,7 @@ static int Run(string[] args)
             Array.Copy(ids, start, input, b * t, t);
             Array.Copy(ids, start + 1, labels, b * t, t);
         }
-        float loss = model.Train(input, labels);
+        float loss = model.Train(input, labels, learningRate);
         if (i == 0 || (i + 1) % 25 == 0 || i == steps - 1)
             Console.WriteLine($"step {model.Step}  train loss {loss:F4}");
         if (i == 0) { model.Sync(); watch.Restart(); }
