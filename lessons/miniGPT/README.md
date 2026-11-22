@@ -1,6 +1,6 @@
 # 從矩陣乘法到可續訓的 miniGPT
 
-在專案根目錄依序執行以下各課。硬體與 .NET 設定沿用[第 0 課](../../README.md)。每一個指令都是一次獨立的程式執行。
+在專案根目錄依序執行以下各課。硬體與 .NET 設定沿用[第 0 課](../00-cuda/README.md)。每一個指令都是一次獨立的程式執行。
 
 ## 第 2 課　把分數算出來
 
@@ -73,7 +73,9 @@ dotnet run --project lessons/miniGPT -- score $model lessons/miniGPT/corpus.txt
 **練習：比較學習率。** 學習率控制每次更新權重的步幅。從同一個模型複製兩份，各跑相同步數，才能把差異歸因到步幅。以下以第 5 課建立的檔案為起點，請使用尚未存在的副本名稱：
 
 ```powershell
-[IO.File]::Copy("lessons/miniGPT/my-first.ckpt", "lessons/miniGPT/trial-small.ckpt")
+$source = (Resolve-Path -LiteralPath "lessons/miniGPT/my-first.ckpt").Path
+$trial = Join-Path $PWD.Path "lessons/miniGPT/trial-small.ckpt"
+[IO.File]::Copy($source, $trial)
 dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/trial-small.ckpt 100 --lr 0.0003
 ```
 
