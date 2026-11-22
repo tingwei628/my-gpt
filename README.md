@@ -1,5 +1,7 @@
 # my-gpt
 
+**English:** [Read the English project guide](README.en.md). The lesson and function walkthroughs are currently in Traditional Chinese.
+
 這個專案帶你用 C# 和 ILGPU，從一次加法建立到能接續文字的小型 GPT，並在 NVIDIA GeForce GTX 1650 with Max-Q Design（4 GB）上執行訓練與推論。預期讀者具備基本 C# 陣列、迴圈與函式概念，課程會逐步引入梯度、矩陣和注意力。
 
 **本專案主要由 GPT 透過 Codex 執行開發。** 程式實作、教學文件、訓練操作及驗證主要由 GPT 完成，使用者提供需求、硬體條件與回饋。開發期間另由子代理分別審查教學可理解性、GPU 數學與執行重現性。
