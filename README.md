@@ -189,6 +189,15 @@ C# 主程式在 CPU 上負責命令、文字編碼、抽取資料與讀寫檔案
 
 所有命令都從專案根目錄執行。第 0、1 課由各自的專案啟動，第 2 課開始可使用 `.\my-gpt.cmd`：
 
+先確認啟動檔在目前目錄。下面第一個檢查應回傳 `True`，第二個檢查用來確認本機最佳權重是否存在：
+
+```powershell
+Test-Path -LiteralPath ".\my-gpt.cmd"
+Test-Path -LiteralPath "lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt"
+```
+
+第二個檢查若為 `False`，可先依下方「首次下載時建立模型」產生權重。每條命令請整行貼上，行尾的數字後面直接按 Enter，例如寫成 `60`。`60\` 會改變傳入參數。PowerShell 中的 `$model` 是變數，需先在同一個視窗賦值才能使用。下面的生成範例直接寫出模型路徑，方便單獨複製執行。
+
 ```powershell
 dotnet run --project lessons/00-cuda/Lesson00.csproj
 dotnet run --project lessons/01-learning/Learning.csproj
@@ -272,34 +281,45 @@ checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複�
 
 ## 常用命令
 
-以下命令從專案根目錄執行。`my-gpt.cmd` 可轉交所有 my-gpt 指令。
+以下命令從專案根目錄執行。`my-gpt.cmd` 可轉交所有 my-gpt 指令。如果目前畫面顯示「你>」，先輸入 `/exit` 回到 PowerShell。
+
+生成、固定提示詞評估、文本評分及副本續訓範例使用本機最佳權重。若你是從頭訓練，可把來源模型路徑換成自己的 `lessons/my-gpt/my-first.ckpt` 或 `lessons/my-gpt/quickstart.ckpt`。
 
 ```powershell
-$model = "lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt"
-if (-not (Test-Path -LiteralPath $model)) {
-    $model = "lessons/my-gpt/my-first.ckpt"
-    if (-not (Test-Path -LiteralPath $model)) {
-        $model = "lessons/my-gpt/quickstart.ckpt"
-    }
-}
-
 # 單次續寫 60 個字元
-.\my-gpt.cmd generate $model "the fox " 60
+.\my-gpt.cmd generate "lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt" "the fox " 60
 
 # 固定四個開頭，各續寫 100 個字元
-.\my-gpt.cmd benchmark $model 100
+.\my-gpt.cmd benchmark "lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt" 100
 
 # 評分指定文本
-.\my-gpt.cmd score $model lessons/my-gpt/corpus.txt
+.\my-gpt.cmd score "lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt" "lessons/my-gpt/corpus.txt"
+```
 
+以下訓練範例會建立另一個檔案。新檔名需尚未存在：
+
+```powershell
 # 從頭訓練另一份模型
-.\my-gpt.cmd train lessons/my-gpt/new-batch4.ckpt 500 lessons/my-gpt/corpus.txt 4
+.\my-gpt.cmd train "lessons/my-gpt/new-batch4.ckpt" 500 "lessons/my-gpt/corpus.txt" 4
+```
 
+續訓範例先複製權重再更新副本。請一次貼上整個區塊，讓 source 與 trial 兩個變數在同一視窗依序設定：
+
+```powershell
 # 在副本上續訓
-$trial = Join-Path $PWD.Path "lessons/my-gpt/trial.ckpt"
-[IO.File]::Copy((Resolve-Path -LiteralPath $model).Path, $trial)
-.\my-gpt.cmd resume lessons/my-gpt/trial.ckpt 100 --lr 0.0001
+try {
+    $source = (Resolve-Path -LiteralPath "lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt" -ErrorAction Stop).Path
+    $trial = Join-Path $PWD.Path "lessons/my-gpt/trial.ckpt"
+    [IO.File]::Copy($source, $trial)
+    .\my-gpt.cmd resume "$trial" 100 --lr 0.0001
+} catch {
+    Write-Error "副本建立失敗。請確認來源存在，並為副本使用尚未存在的檔名。"
+}
+```
 
+數學範例和檢查可以各自單獨執行：
+
+```powershell
 # 數學與重現性檢查
 .\my-gpt.cmd check
 .\my-gpt.cmd math

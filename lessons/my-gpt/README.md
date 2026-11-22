@@ -4,6 +4,8 @@
 
 在專案根目錄依序執行以下各課。硬體與 .NET 設定沿用[第 0 課](../00-cuda/README.md)。每一個指令都是一次獨立的程式執行。
 
+命令範例都可由根目錄的 `my-gpt.cmd` 啟動。請整行貼上並按 Enter，數字參數後面保持空白或直接結束該行。模型路徑以目前工作目錄為準；第 6 課的範例需要先完成第 5 課，建立 `my-first.ckpt`。
+
 第 0、1 課各有自己的小程式。從這裡開始，第 2 至 6 課共用同一套 GPT 實作。`math` 先單獨示範線性運算，`attention` 和 `check` 用較小的模型配置方便觀察與驗算；到了第 5 課才訓練並留下權重檔，供第 6 課載入。讀核心程式時，從 [Model.cs](Model.cs) 看一個字元如何通過 Transformer，再到 [Kernels.cs](Kernels.cs) 看每一步如何交給 GPU 計算。
 
 [上一課：bigram](../01-learning/README.md) · [分數](#lesson-2) · [注意力](#lesson-3) · [驗算](#lesson-4) · [訓練](#lesson-5) · [推論](#lesson-6) · [專案總覽](../../README.md)
@@ -87,16 +89,16 @@ flowchart TD
 在專案根目錄使用一個新的檔名。以下指令共訓練 125 步。
 
 ```powershell
-dotnet run --project lessons/my-gpt -- train lessons/my-gpt/my-first.ckpt 100
-dotnet run --project lessons/my-gpt -- generate lessons/my-gpt/my-first.ckpt "the "
-dotnet run --project lessons/my-gpt -- resume lessons/my-gpt/my-first.ckpt 25
+.\my-gpt.cmd train "lessons/my-gpt/my-first.ckpt" 100
+.\my-gpt.cmd generate "lessons/my-gpt/my-first.ckpt" "the "
+.\my-gpt.cmd resume "lessons/my-gpt/my-first.ckpt" 25
 ```
 
 第一條指令配置 2 層、4 個頭、嵌入寬度 64 的模型。每步讀 1 段 64 字元，每個位置的答案是原文中的下一字。例如原文 abcd，輸入 abc，答案 bcd。GPU buffers 表示程式配置的張量空間，驅動程式還會使用其他顯存。暖機後的 tokens/s 是每秒處理多少個訓練位置。比較開頭與結尾的驗證 loss，再看模型能否續寫出語料裡的單字。教材語料由簡單英文句型組成，適合觀察模型學會拼字及句型的過程。
 
 第二條指令重新讀取檔案，從開頭文字逐次挑分數最高的字；超過 64 個位置時只讀最近 64 個。這種選字法稱為貪婪解碼，同一個 checkpoint 與開頭會得到相同文字。試著把開頭換成 `"the fox "`，比較兩次續寫。第三條指令應印出 step 101 到 step 125 的進度。它會接著使用儲存的權重、AdamW 狀態、步數及資料順序。
 
-可以把自己的 UTF-8 純文字檔路徑放在步數後，例如 `dotnet run --project lessons/my-gpt -- train lessons/my-gpt/custom.ckpt 100 my-text.txt 4`，最後的 4 是每批段數。續訓時也要提供同一份文本，例如 `dotnet run --project lessons/my-gpt -- resume lessons/my-gpt/custom.ckpt 25 my-text.txt`。教材字表支援 2 至 1024 個單一 UTF-16 單元的字元，包含常見中文字；含 emoji 或擴展漢字等代理對的語料會在訓練前提示。資料依原順序切分，約前九成用來抽訓練視窗、後一成驗證。兩段各需至少 65 字元，驗證用字必須曾在訓練段出現。內建[語料](corpus.txt)保留未出現在訓練段的完整句子組合。
+自訂語料需先備妥。例如先把 UTF-8 純文字存成專案根目錄的 my-text.txt，執行 `Test-Path -LiteralPath "my-text.txt"` 應得到 True。接著可以把文字檔路徑放在步數後，例如 `dotnet run --project lessons/my-gpt -- train lessons/my-gpt/custom.ckpt 100 my-text.txt 4`，最後的 4 是每批段數。續訓時也要提供同一份文本，例如 `dotnet run --project lessons/my-gpt -- resume lessons/my-gpt/custom.ckpt 25 my-text.txt`。教材字表支援 2 至 1024 個單一 UTF-16 單元的字元，包含常見中文字；含 emoji 或擴展漢字等代理對的語料會在訓練前提示。資料依原順序切分，約前九成用來抽訓練視窗、後一成驗證。兩段各需至少 65 字元，驗證用字必須曾在訓練段出現。內建[語料](corpus.txt)保留未出現在訓練段的完整句子組合。
 
 現在你可以用步數解釋訓練如何從上次中斷的地方繼續，也可以用驗證 loss 比較訓練前後的預測。接下來保留這份 checkpoint，看看固定權重時，如何從一段開頭逐字生成，以及如何替一段已有答案的文字評分。
 
@@ -116,13 +118,12 @@ flowchart TD
 
 `InferenceSession` 負責載入權重、把文字轉成編號、呼叫 `Forward`、逐字挑選分數最高的候選字，並把結果還原成文字。你可以在同一個 session 依序傳入不同開頭。`Forward` 計算到候選分數就回傳。生成時使用 batch 1，載入既有訓練 checkpoint 時會略過動量，省下梯度與動量的 GPU 空間。續訓仍由 `resume` 載入完整狀態。
 
-先用第 5 課儲存的模型執行。checkpoint 保存在訓練電腦，可把下面路徑換成自己要比較的模型。本機目前最佳版本位於 `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt`。
+先用第 5 課儲存的模型執行。若仍在互動介面的「你>」提示，先輸入 `/exit` 回到 PowerShell，再執行下面的命令。checkpoint 保存在訓練電腦，可把下面路徑換成自己要比較的模型。本機目前最佳版本位於 `lessons/my-gpt/quality-step1001-lr0.0003-22f75508d3.ckpt`。
 
 ```powershell
-$model = "lessons/my-gpt/my-first.ckpt"
-dotnet run --project lessons/my-gpt -- generate $model "the fox " 60
-dotnet run --project lessons/my-gpt -- benchmark $model 100
-dotnet run --project lessons/my-gpt -- score $model lessons/my-gpt/corpus.txt
+.\my-gpt.cmd generate "lessons/my-gpt/my-first.ckpt" "the fox " 60
+.\my-gpt.cmd benchmark "lessons/my-gpt/my-first.ckpt" 100
+.\my-gpt.cmd score "lessons/my-gpt/my-first.ckpt" "lessons/my-gpt/corpus.txt"
 ```
 
 第一個指令新增 60 個字元。省略數量時預設為 100，設成 0 會直接回傳開頭。這份模型沒有句尾停止 token，所以輸出可能在字中間截斷。相同的模型、開頭和長度會得到相同的貪婪生成結果。輸入需在模型字表內。
@@ -145,11 +146,17 @@ dotnet run --project lessons/my-gpt -- score $model lessons/my-gpt/corpus.txt
 
 **練習：比較學習率。** 學習率控制每次更新權重的步幅。從同一個模型複製兩份，各跑相同步數，才能把差異歸因到步幅。以下以第 5 課建立的檔案為起點，請使用尚未存在的副本名稱：
 
+請在同一個 PowerShell 視窗一次貼上整個區塊，依序設定變數、複製檔案及續訓：
+
 ```powershell
-$source = (Resolve-Path -LiteralPath "lessons/my-gpt/my-first.ckpt").Path
-$trial = Join-Path $PWD.Path "lessons/my-gpt/trial-small.ckpt"
-[IO.File]::Copy($source, $trial)
-dotnet run --project lessons/my-gpt -- resume lessons/my-gpt/trial-small.ckpt 100 --lr 0.0003
+try {
+    $source = (Resolve-Path -LiteralPath "lessons/my-gpt/my-first.ckpt" -ErrorAction Stop).Path
+    $trial = Join-Path $PWD.Path "lessons/my-gpt/trial-small.ckpt"
+    [IO.File]::Copy($source, $trial)
+    .\my-gpt.cmd resume "$trial" 100 --lr 0.0003
+} catch {
+    Write-Error "副本建立失敗。請確認來源存在，並為副本使用尚未存在的檔名。"
+}
 ```
 
 另做一份副本，把學習率改成 0.003，再比較兩次的「訓練後驗證 loss」及同一句開頭的生成結果。`--lr` 只套用於本次指令，省略時使用預設值 0.003。要接著用較小步幅訓練，每次續訓都要指定相同的 `--lr`。
