@@ -1,0 +1,35 @@
+# .NET build outputs
+**/bin/
+**/obj/
+
+# IDE workspace and per-user state
+**/.vs/
+**/.vscode/
+**/.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Local model checkpoints and training artifacts
+*.ckpt
+*.ckpt.lock
+*.tmp
+*.log
+
+# Local environment, credentials and agent settings
+.env
+.env.*
+!.env.example
+**/.aws/
+**/.codex/
+*.local.json
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Operating system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

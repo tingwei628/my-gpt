@@ -6,6 +6,11 @@ using ILGPU.Runtime;
 using MiniGPT;
 
 try { return Run(args); }
+catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+{
+    Console.Error.WriteLine("檔案操作失敗。請確認模型或語料存在、路徑與存取權限正確，且檔案可供讀寫。");
+    return 1;
+}
 catch (Exception ex) { Console.Error.WriteLine(ex.Message); return 1; }
 
 static int Run(string[] args)

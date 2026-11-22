@@ -9,7 +9,7 @@ internal static class InteractiveCli
         using var session = new InferenceSession(path);
         int length = 100;
         Console.WriteLine($"miniGPT | CUDA {session.Device} | step {session.Step}");
-        Console.WriteLine($"模型 {Path.GetFullPath(path)}");
+        Console.WriteLine($"模型 {Path.GetFileName(path)}");
         Console.WriteLine("輸入字表內的文字後按 Enter 續寫。每次輸入都是獨立的新開頭，結尾空白會保留。");
         Console.WriteLine("/help 說明 | /length 60 設定新增字元數 | /info 模型資訊 | /exit 離開");
         while (true)
@@ -68,9 +68,9 @@ internal static class InteractiveCli
             ? directory.FullName : AppContext.BaseDirectory;
         string[] files = Directory.GetFiles(modelDirectory, "*.ckpt");
         if (files.Length == 0)
-            throw new ArgumentException($"在 {modelDirectory} 找不到 checkpoint。請先依第 5 課訓練模型，或在專案根目錄執行 .\\minigpt.cmd chat \"模型的完整路徑.ckpt\"。");
+            throw new ArgumentException("在模型資料夾找不到 checkpoint。請先依第 5 課訓練模型，或在專案根目錄執行 .\\minigpt.cmd chat \"模型路徑.ckpt\"。");
         if (files.Length > 1)
-            throw new ArgumentException($"在 {modelDirectory} 找到 {files.Length} 個 checkpoint。請在專案根目錄執行 .\\minigpt.cmd chat \"模型路徑.ckpt\"。相對路徑以目前工作目錄為準。");
+            throw new ArgumentException($"在模型資料夾找到 {files.Length} 個 checkpoint。請在專案根目錄執行 .\\minigpt.cmd chat \"模型路徑.ckpt\"。相對路徑以目前工作目錄為準。");
         return files[0];
     }
 }

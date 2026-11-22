@@ -10,10 +10,9 @@
 
 ### 這台電腦已有最佳權重
 
-在 PowerShell 執行：
+在 PowerShell 切換至專案根目錄後執行：
 
 ```powershell
-# 在專案根目錄執行
 .\minigpt.cmd
 ```
 
@@ -34,7 +33,7 @@
 
 ### 首次下載，需要先建立權重
 
-checkpoint 儲存在訓練電腦，並由 `lessons/.gitignore` 排除。首次下載專案，可從原電腦複製權重到 `lessons/miniGPT`，或從專案根目錄執行：
+checkpoint 儲存在訓練電腦，並由根目錄 `.gitignore` 排除。首次下載專案，可從原電腦複製權重到 `lessons/miniGPT`，或從專案根目錄執行：
 
 ```powershell
 .\minigpt.cmd train lessons/miniGPT/quickstart.ckpt 100
@@ -111,7 +110,7 @@ flowchart TD
 |---|---|
 | `README.md` | 專案入口、架構、操作與完整檔案清單 |
 | `minigpt.cmd` | Windows 啟動腳本，定位 miniGPT 專案並轉交參數 |
-| `lessons/.gitignore` | 排除建置目錄、IDE 狀態與本機 checkpoint |
+| `.gitignore` | 專案共用忽略規則，排除建置輸出、IDE 狀態、checkpoint、環境變數與憑證 |
 | `lessons/00-cuda/Lesson00.csproj` | 第 0 課 .NET 專案，引用 ILGPU |
 | `lessons/00-cuda/Program.cs` | CUDA 裝置選取、向量加法與 CPU 驗算 |
 | `lessons/00-cuda/README.md` | 第 0 課操作、手算與改數字練習 |
