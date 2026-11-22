@@ -1,5 +1,15 @@
 # 第 1 課：一次更新能學到什麼？
 
+[本課程式區塊圖解](../../docs/functions.md) 可對照單權重更新與 bigram 兩段頂層敘述。
+
+```mermaid
+flowchart TD
+    A["輸入 2、目標 4"] --> B["Program.cs 頂層：更新 weight 得 1.4"]
+    C["語料 abcab"] --> D["頂層 for 迴圈：更新 scores"]
+    D --> E["foreach：印出 a→b、b→c、c→a"]
+    E -.-> F["第 2 課：用矩陣計算候選分數"]
+```
+
 上一課把指定的加法交給 GPU。這一課用第二個獨立範例在 CPU 上追蹤學習的過程：先讓一個乘數隨誤差改變，再讓三個候選字的分數隨正確答案改變。你可以把程式中的每次更新和手算一一對上。[回看第 0 課](../00-cuda/README.md)
 
 在專案根目錄執行 `dotnet run --project lessons/01-learning`。先猜：輸入 2，想得到 4，目前乘上的權重是 1。應該把它調大還是調小？

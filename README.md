@@ -6,6 +6,61 @@
 
 目前的模型使用簡單英文句型訓練。輸入 `the fox ` 後，它會逐字接續文字。互動介面每次接受一段獨立開頭，輸入需使用訓練字表內的字元。
 
+## miniGPT 是什麼，與 inference engine 有什麼關係
+
+### 先分辨專案、模型與權重
+
+GPT 是 Generative Pre-trained Transformer，這裡用它來學習文字中「下一個字元會是什麼」。Transformer 透過注意力讀取前文，訓練把觀察到的規律存進權重，再用這些權重逐字生成。本專案的 mini 表示採用較少層數、較小向量與簡單語料，讓初學者能追蹤每一步。這份實作以一個字元作為一個 token，也就是模型的一個輸入單位。
+
+Karpathy 的 **minGPT** 是一套用 PyTorch 撰寫、以教學為目的的 GPT 實作。本專案以它的概念為參考，用 C# 與 ILGPU 實作字元級 GPT，文件中稱為 **miniGPT**。這個專案同時包含模型、訓練工具、推論程式與教學範例。
+
+說「miniGPT 模型」時，指的是 **Transformer 計算規則與學好的權重**。計算規則描述每層如何處理輸入，權重則是訓練調整出來的數字。給它字元編號，做一次前向計算，會得到每個候選字元的分數（logits）。
+
+`Model.cs` 組裝計算規則，`Kernels.cs` 實作數學，`.ckpt` 保存學好的權重以及字表、尺寸、步數與續訓狀態。只看一次模型的輸出，就能替「下一個字元」選答案。
+
+### 推論引擎把一次預測接成整段生成
+
+**Inference engine（推論引擎）是使用已訓練模型來處理要求的執行程式。** 在本專案中，`InferenceSession.cs` 負責載入模型、把文字轉成編號、準備上下文、呼叫前向計算、挑下一字元，以及重複這個過程。載入由 `Checkpoint.Load` 支援，實際 GPU 計算由 `Model.Forward` 和 `Kernels.Forward` 執行。
+
+例如輸入 `the `，模型一次前向計算會給各候選字元分數。引擎選出某個字元後，把它接回輸入，再呼叫模型預測下一個。以下 r 是說明流程的示意選字，實際結果取決於權重與前文。
+
+```mermaid
+flowchart TD
+    C["checkpoint<br/>模型尺寸、字表與權重"] --> L["InferenceSession 建構式<br/>Checkpoint.Load 載入一次"]
+    L --> M["可用的模型與 GPU 緩衝區"]
+    U["使用者輸入 the 加空白"] --> UI["InteractiveCli.Run<br/>讀取與顯示"]
+    UI --> E["InferenceSession.Generate / Encode<br/>首次編碼開頭"]
+    E --> W["Generate<br/>取最近 T 個編號，補滿視窗"]
+    M --> F["Model.Forward / Kernels.Forward<br/>依模型規則與權重計算分數"]
+    W --> F
+    F --> S["Generate<br/>讀最後有效位置，選最大分數"]
+    S --> O["字元 r<br/>回呼顯示，加入目前文字"]
+    O --> Q{"還要生成嗎"}
+    Q -->|"是，the 加空白加 r"| W
+    Q -->|"否"| R["回傳整段文字與時間統計"]
+```
+
+| 比較項目 | miniGPT 模型 | 本專案的推論引擎 |
+|---|---|---|
+| 要回答的問題 | 給定前文，各候選字元應得幾分 | 如何載入並執行模型，接成可用的生成或評分流程 |
+| 主要內容 | Transformer 結構與學習參數 | 載入、編碼、上下文處理、GPU 呼叫、選字與生成迴圈 |
+| 對應程式與資料 | Model、Kernels 定義數學，checkpoint 保存參數 | InferenceSession 統籌，重用 Checkpoint 與模型前向計算 |
+| 改變它會有什麼效果 | 訓練權重可以改變學到的拼字、句型與分數 | 調整生成長度、停止邏輯或選字流程會改變如何使用這些分數 |
+| 權重何時被更新 | 訓練時由 Model.Train 與 AdamW 更新 | 推論模式載入後用來計算，生成過程保持固定 |
+
+`InteractiveCli.cs` 是人與程式互動的介面。`InferenceCommands.cs` 解析單次命令。它們把生成與評分交給 session，讓同一套引擎能用在互動和單次執行。模型的前向計算也會被訓練共用，所以 `Model.cs` 同時出現在兩條路徑。
+
+這裡的引擎支援本專案自訂的 `MiniGPT/1` checkpoint 格式與實作允許的尺寸。換成另一份相容權重時，可以沿用相同的 session 程式。檔案格式、字表與模型運算必須配合，才能正確執行。
+
+## 圖解閱讀入口
+
+每堂課的教材都有一張對應流程圖，先看資料怎麼走，再回到程式找同名函式。函式圖中箭頭表示呼叫或資料流，方框內會標出輸入、動作或輸出。圖中的迴圈次數與陣列尺寸會依實際命令而不同。
+
+- [第 0 課](lessons/00-cuda/README.md) 與 [第 1 課](lessons/01-learning/README.md) 的圖解從 GPU 加法與單一權重開始。
+- [第 2 至 6 課](lessons/miniGPT/README.md) 的圖解位於各課開頭，依序觀察矩陣、注意力、驗算、訓練與生成。
+- [命令、推論、存檔與驗證函式圖解](docs/functions.md) 說明每個手寫函式的輸入、動作與輸出。
+- [模型、GPU 核心與 CPU 參考函式圖解](docs/model-functions.md) 展開模型的組裝和運算，包括小型輔助函式。
+
 ## 先理解最後要完成的事
 
 把原文 `abcab` 錯開一格，可以得到輸入 `abc` 和答案 `bca`。第一個位置看到 a，要猜 b。第二個位置看到 ab，要猜 c。第三個位置看到 abc，要猜 a。這就是整個專案反覆使用的「預測下一個字元」。
@@ -181,6 +236,8 @@ checkpoint 由根目錄 `.gitignore` 排除，保存在訓練電腦。可以複�
 | `README.md` | 專案入口、架構、操作與完整檔案清單 |
 | `minigpt.cmd` | Windows 啟動腳本，定位 miniGPT 專案並轉交參數 |
 | `.gitignore` | 專案共用忽略規則，排除建置輸出、IDE 狀態、checkpoint、環境變數與憑證 |
+| `docs/functions.md` | 命令、互動、推論、存檔與驗證的逐函式圖解，包含輸入與輸出 |
+| `docs/model-functions.md` | 模型組裝、前反向計算、GPU 核心和 CPU 參考的逐函式圖解 |
 | `lessons/00-cuda/Lesson00.csproj` | 第 0 課 .NET 專案，引用 ILGPU |
 | `lessons/00-cuda/Program.cs` | CUDA 裝置選取、向量加法與 CPU 驗算 |
 | `lessons/00-cuda/README.md` | 第 0 課操作、手算與改數字練習 |

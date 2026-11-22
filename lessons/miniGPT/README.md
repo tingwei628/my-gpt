@@ -1,5 +1,7 @@
 # 從矩陣乘法到可續訓的 miniGPT
 
+[命令與推論函式圖解](../../docs/functions.md) · [模型與 GPU 函式圖解](../../docs/model-functions.md)。可先讀每課的小圖，再沿同名函式展開。miniGPT 模型計算候選字元分數，推論引擎負責載入、編碼、選字與反覆生成；兩者的配合見[專案總覽](../../README.md)。
+
 在專案根目錄依序執行以下各課。硬體與 .NET 設定沿用[第 0 課](../00-cuda/README.md)。每一個指令都是一次獨立的程式執行。
 
 第 0、1 課各有自己的小程式。從這裡開始，第 2 至 6 課共用同一套 GPT 實作。`math` 先單獨示範線性運算，`attention` 和 `check` 用較小的模型配置方便觀察與驗算；到了第 5 課才訓練並留下權重檔，供第 6 課載入。讀核心程式時，從 [Model.cs](Model.cs) 看一個字元如何通過 Transformer，再到 [Kernels.cs](Kernels.cs) 看每一步如何交給 GPU 計算。
@@ -9,6 +11,13 @@
 <a id="lesson-2"></a>
 
 ## 第 2 課　把分數算出來
+
+```mermaid
+flowchart TD
+    A["math：兩個位置的輸入與權重"] --> B["Model.ShowLinear：呼叫 GPU 線性運算"]
+    B --> C["輸出 2×2 乘積 [4,6,10,12]"]
+    C -.-> D["第 3 課：用線性運算準備 Q、K、V"]
+```
 
 上一課用目前字元查出一整列分數。這次改用一組數字表示每個位置，並用同一組權重替各位置計分。留意哪一列對應輸入位置、哪一欄對應候選字。
 
@@ -21,6 +30,13 @@
 <a id="lesson-3"></a>
 
 ## 第 3 課　看見每個字可以讀到哪裡
+
+```mermaid
+flowchart TD
+    A["attention：輸入 abc 的編號 [0,1,2]"] --> B["Model.Evaluate：小模型計算注意力與預測"]
+    B --> C["Model.ShowBlock：印出第一個頭的 3×3 機率表"]
+    C -.-> D["第 4 課：改動末字，檢查前面的預測"]
+```
 
 這一課往輸出端的前一步看。因果注意力讓每個位置先讀取已出現的字，更新表示該位置的向量，隨後再使用上一課的線性運算來預測。
 
@@ -36,6 +52,13 @@
 
 ## 第 4 課　證明模型學得動
 
+```mermaid
+flowchart TD
+    A["check：兩段小序列及其目標字元"] --> B["Checks.Run：比較 Reference.Predict 與 GPU 結果"]
+    B --> C["輸出梯度核對、固定批次 loss 與還原檢查結果"]
+    C -.-> D["第 5 課：用驗過的訓練流程處理語料"]
+```
+
 上一課讀的是一次前向計算。訓練還需要知道每一組權重該怎麼改，因此要把第 1 課的一個梯度，擴展到整個 Transformer 的參數。這次用小模型檢查梯度、未來字元的影響，以及更新後的結果。
 
 執行 `dotnet run --project lessons/miniGPT -- check`。這一課用兩組各四個位置的小序列。先看 [CPU 參考答案](Reference.cs) 的二維陣列，再看 [數值檢查](Checks.cs) 怎麼用同一組權重比較 GPU 分數和 loss。
@@ -50,6 +73,14 @@
 <a id="lesson-5"></a>
 
 ## 第 5 課　訓練自己的模型、關掉程式、繼續生成
+
+```mermaid
+flowchart TD
+    A["train：讀取語料、抽取輸入與下一字元答案"] --> B["Model.Train：計算 loss 與梯度並更新權重"]
+    B --> C["Checkpoint.Save：存成 my-first.ckpt"]
+    C --> D["resume：載入同一檔案，從下一步繼續更新"]
+    D -.-> E["第 6 課：讀回續訓後的權重來生成與評分"]
+```
 
 把上一課驗過的更新流程用在英文語料上。這次的產物是 checkpoint（權重與訓練狀態檔）；同一份檔案可以接著訓練，也可以只載入權重來續寫。
 
@@ -72,6 +103,14 @@ dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/my-first.ckpt 25
 <a id="lesson-6"></a>
 
 ## 第 6 課　載入一次模型，生成與評分
+
+```mermaid
+flowchart TD
+    A["第 5 課的 my-first.ckpt"] --> B["InferenceSession：載入模型"]
+    B --> C["Generate：輸入開頭，輸出續寫文字"]
+    B --> D["Score：輸入全文，輸出 loss、困惑度與正確率"]
+    C -.-> E["延伸練習：比較不同學習率下的續寫與驗證 loss"]
+```
 
 先在專案根目錄執行 `.\minigpt.cmd chat lessons/miniGPT/my-first.ckpt`，載入上一課保存的模型並進入互動模式。輸入 `the fox ` 並按 Enter，模型逐字顯示新增內容，接著回到輸入提示。它會在同一個 session 中重複使用 GPU 權重。`/length 60` 可設定每次續寫 60 個字元，`/info` 顯示字表，`/exit` 結束程式。每次輸入是獨立的文字開頭。只有一個 checkpoint 時，也能直接執行 `.\minigpt.cmd` 自動載入。
 

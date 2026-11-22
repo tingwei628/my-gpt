@@ -1,5 +1,14 @@
 # 第 0 課　在筆電 GPU 上算出第一個答案
 
+[本課函式圖解](../../docs/functions.md) 可對照 Main 與 Add 的輸入、處理及輸出。
+
+```mermaid
+flowchart TD
+    A["Main：準備 [1,2] 和 [3,4]"] --> B["Add：GPU 逐項相加"]
+    B --> C["GetAsArray1D：取回 [4,6]，由 CPU 驗算"]
+    C -.-> D["第 1 課：用手算驗證一次學習更新"]
+```
+
 這是第一個獨立範例。從兩組數字開始，你能用紙筆先算出答案，再確認 C# 真的把相同的計算交給了 NVIDIA 顯卡。之後在 GPT 中，一個位置也會有一組數字，GPU 會替許多位置同時計算。
 
 1. 在裝有 NVIDIA 顯卡與驅動程式的 Windows 電腦上開啟 PowerShell。輸入 `nvidia-smi`，在裝置表中找到顯卡名稱。`dotnet --list-sdks` 應列出 10.x 或支援 net10.0 的更新 SDK，`dotnet --list-runtimes` 應列出 Microsoft.NETCore.App 10.x。若缺少環境，可安裝 [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)。
