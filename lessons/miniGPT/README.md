@@ -43,6 +43,8 @@ dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/my-first.ckpt 25
 
 ## 第 6 課　載入一次模型，生成與評分
 
+先在專案根目錄執行 `.\minigpt.cmd` 進入互動模式。輸入 `the fox ` 並按 Enter，模型逐字顯示新增內容，接著回到輸入提示。它會在同一個 session 中重複使用 GPU 權重。`/length 60` 可設定每次續寫 60 個字元，`/info` 顯示字表，`/exit` 結束程式。每次輸入是獨立的文字開頭。自動載入要求專案內恰有一個 checkpoint，若有多份則用 `.\minigpt.cmd chat "模型路徑.ckpt"` 指定。
+
 `InferenceSession` 負責載入權重、把文字轉成編號、呼叫 `Forward`、逐字挑選分數最高的候選字，並把結果還原成文字。你可以在同一個 session 依序傳入不同開頭。`Forward` 計算到候選分數就回傳。生成時使用 batch 1，載入既有訓練 checkpoint 時會略過動量，省下梯度與動量的 GPU 空間。續訓仍由 `resume` 載入完整狀態。
 
 先用第 5 課儲存的模型執行。checkpoint 保存在訓練電腦，可把下面路徑換成自己要比較的模型。本機目前最佳版本位於 `lessons/miniGPT/quality-step1001-lr0.0003-22f75508d3.ckpt`。

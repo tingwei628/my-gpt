@@ -2,6 +2,12 @@
 
 用 C# 和 ILGPU，從兩個數字的加法開始，逐步建立能預測下一個字元的小型 GPT。
 
+在 Windows PowerShell 切換到專案根目錄後，執行 `.\minigpt.cmd` 啟動互動命令列。程式會自動載入 `lessons/miniGPT` 內唯一的 checkpoint。輸入 `the fox `（結尾加空白）後按 Enter，即可逐字看到續寫，再輸入下一個開頭繼續使用。
+
+輸入 `/length 60` 調整新增字元數、`/info` 查看模型、`/help` 查看說明、`/exit` 離開。每次開頭獨立生成。目前保留的模型用簡單英文句型訓練，適合英文續寫。字表外輸入會顯示提示，可修改後繼續輸入。
+
+若資料夾有多個模型，使用 `.\minigpt.cmd chat "模型路徑.ckpt"` 指定。也可使用 `dotnet run --project lessons/miniGPT` 啟動互動模式。
+
 ## 第 0 課　在筆電 GPU 上算出第一個答案
 
 這一課要回答一個問題：怎麼知道自己的 C# 程式真的把計算交給了 NVIDIA 顯卡？

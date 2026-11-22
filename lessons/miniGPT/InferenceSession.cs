@@ -38,7 +38,7 @@ internal sealed class InferenceSession : IDisposable
         return ids;
     }
 
-    public Generation Generate(string prompt, int count = 100)
+    public Generation Generate(string prompt, int count = 100, Action<char>? onCharacter = null)
     {
         if (prompt.Length == 0) throw new ArgumentException("開頭至少需要一個字元。");
         if (count < 0) throw new ArgumentException("新增字元數需大於或等於零。");
@@ -60,6 +60,7 @@ internal sealed class InferenceSession : IDisposable
                 if (logits[offset + j] > logits[offset + next]) next = j;
             encoded.Add(next);
             result.Append(Alphabet[next]);
+            onCharacter?.Invoke(Alphabet[next]);
             if (i == 0) firstMs = timer.Elapsed.TotalMilliseconds;
         }
         timer.Stop();

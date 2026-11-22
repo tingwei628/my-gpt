@@ -10,6 +10,14 @@ catch (Exception ex) { Console.Error.WriteLine(ex.Message); return 1; }
 
 static int Run(string[] args)
 {
+    if (args is ["--help"] or ["-h"])
+    {
+        Console.WriteLine("miniGPT 互動命令列");
+        Console.WriteLine("不帶參數啟動，或 chat [模型.ckpt]。進入後輸入文字，按 Enter 續寫。");
+        Console.WriteLine("generate 模型.ckpt 開頭 [新增字元數] | benchmark 模型.ckpt [新增字元數] | score 模型.ckpt 文本.txt");
+        return 0;
+    }
+    if (args.Length == 0 || args[0] == "chat") return InteractiveCli.Run(args);
     if (args is ["check"]) { Checks.Run(); return 0; }
     if (args is ["math"] or ["attention"])
     {
