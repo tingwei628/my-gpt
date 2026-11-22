@@ -18,12 +18,8 @@ static int Run(string[] args)
         else { demo.Evaluate([0,1,2], [1,2,0]); demo.ShowBlock(); }
         return 0;
     }
-    if (args is ["generate", var file, var prompt])
-    {
-        using var loaded = Checkpoint.Load(file, out string chars, out _);
-        Console.WriteLine(Generate(loaded, chars, prompt, 100));
-        return 0;
-    }
+    if (args.Length > 0 && args[0] is "generate" or "benchmark" or "score")
+        return InferenceCommands.Run(args);
     float learningRate = Model.DefaultLearningRate;
     if (args.Length >= 5 && args[^2] == "--lr")
     {
@@ -35,7 +31,7 @@ static int Run(string[] args)
     if (args.Length < 3 || args.Length > 5 || args[0] is not ("train" or "resume") ||
         !int.TryParse(args[2], out int steps) || steps < 1)
     {
-        Console.Error.WriteLine("用法：math | attention | check | train 新檔.ckpt 步數 [語料.txt [batch]] [--lr 學習率] | resume 檔.ckpt 步數 [語料.txt] [--lr 學習率] | generate 檔.ckpt 開頭");
+        Console.Error.WriteLine("用法：math | attention | check | train 新檔.ckpt 步數 [語料.txt [batch]] [--lr 學習率] | resume 檔.ckpt 步數 [語料.txt] [--lr 學習率] | generate 檔.ckpt 開頭 [新增字元數] | benchmark 檔.ckpt [新增字元數] | score 檔.ckpt 文本.txt");
         return 1;
     }
     string path = args[1];
@@ -115,8 +111,7 @@ static string Generate(Model model, string alphabet, string prompt, int count)
         string prefix = text.Length > t ? text[^t..] : text;
         var input = new int[t * model.Config.Batch];
         for (int j = 0; j < prefix.Length; j++) input[j] = alphabet.IndexOf(prefix[j]);
-        model.Evaluate(input, input);
-        var logits = model.Logits.Value.GetAsArray1D();
+        var logits = model.Forward(input);
         int offset = (prefix.Length - 1) * alphabet.Length;
         int next = Enumerable.Range(0, alphabet.Length).MaxBy(k => logits[offset + k]);
         text += alphabet[next];

@@ -6,6 +6,7 @@ internal static class Checkpoint
 {
     public static void Save(string path, Model model, string alphabet, string dataHash, bool overwrite = false)
     {
+        if (!model.ForTraining) throw new InvalidOperationException("儲存續訓 checkpoint 需要訓練模式。");
         string temporary = path + "." + Guid.NewGuid() + ".tmp";
         try
         {
@@ -20,7 +21,7 @@ internal static class Checkpoint
                 {
                     w.Write(p.Name);
                     w.Write(p.Tensor.Value.IntExtent.X);
-                    foreach (var buffer in new[] { p.Tensor.Value, p.M, p.V })
+                    foreach (var buffer in new[] { p.Tensor.Value, p.M!, p.V! })
                         foreach (float f in buffer.GetAsArray1D()) w.Write(f);
                 }
             }
@@ -29,7 +30,7 @@ internal static class Checkpoint
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
-    public static Model Load(string path, out string alphabet, out string dataHash)
+    public static Model Load(string path, out string alphabet, out string dataHash, bool forTraining = true)
     {
         using var r = new BinaryReader(File.OpenRead(path));
         if (r.ReadString() != "MiniGPT/1") throw new InvalidDataException("不支援的 checkpoint。");
@@ -41,7 +42,7 @@ internal static class Checkpoint
             c.Heads is < 1 or > 4 || c.D % c.Heads != 0 || c.Layers is < 1 or > 2 ||
             alphabet.Length is < 2 or > 1024 || alphabet.Distinct().Count() != alphabet.Length || step < 0)
             throw new InvalidDataException("模型尺寸或字表不正確。");
-        var model = new Model(c, alphabet.Length) { Step = step };
+        var model = new Model(forTraining ? c : c with { Batch = 1 }, alphabet.Length, forTraining) { Step = step };
         try
         {
             foreach (var p in model.Parameters)
@@ -50,6 +51,14 @@ internal static class Checkpoint
                     throw new InvalidDataException($"參數不符：{p.Name}");
                 foreach (var buffer in new[] { p.Tensor.Value, p.M, p.V })
                 {
+                    if (buffer is null)
+                    {
+                        // 舊 checkpoint 的動量仍佔據檔案空間，推論時直接跳過。
+                        long bytes = p.Tensor.Value.Length * sizeof(float);
+                        if (bytes > r.BaseStream.Length - r.BaseStream.Position) throw new EndOfStreamException("checkpoint 資料不完整。");
+                        r.BaseStream.Seek(bytes, SeekOrigin.Current);
+                        continue;
+                    }
                     var values = new float[buffer.Length];
                     for (int i = 0; i < values.Length; i++) values[i] = r.ReadSingle();
                     buffer.CopyFromCPU(values);

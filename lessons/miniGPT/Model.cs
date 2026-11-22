@@ -8,8 +8,8 @@ using IdBuffer = ILGPU.Runtime.MemoryBuffer1D<int, ILGPU.Stride1D.Dense>;
 namespace MiniGPT;
 
 internal record Config(int Batch = 1, int T = 64, int D = 64, int Heads = 4, int Layers = 2);
-internal sealed record Tensor(Buffer Value, Buffer Grad);
-internal sealed record Parameter(string Name, Tensor Tensor, Buffer M, Buffer V, float Decay);
+internal sealed record Tensor(Buffer Value, Buffer? Grad);
+internal sealed record Parameter(string Name, Tensor Tensor, Buffer? M, Buffer? V, float Decay);
 internal sealed record Node(Op Op, Shape Shape, Tensor A, Tensor? B, IdBuffer Ids, Tensor Output);
 
 internal sealed class Model : IDisposable
@@ -21,6 +21,7 @@ internal sealed class Model : IDisposable
     private readonly List<Node> graph = [];
     public List<Parameter> Parameters { get; } = [];
     public Config Config { get; }
+    public bool ForTraining { get; }
     public int Step { get; set; }
     public Tensor Logits { get; }
     public Tensor Loss { get; }
@@ -28,21 +29,25 @@ internal sealed class Model : IDisposable
     public long BufferBytes { get; private set; }
     private readonly IdBuffer tokens, targets, positions;
     private readonly Action<Index1D, Op, Shape, Values, ArrayView<float>> forward;
-    private readonly Action<Index1D, Op, Shape, Values, ArrayView<float>, ArrayView<float>, int, ArrayView<float>> backward;
+    private readonly Action<Index1D, Op, Shape, Values, ArrayView<float>, ArrayView<float>, int, ArrayView<float>>? backward;
     public const float DefaultLearningRate = 0.003f;
-    private readonly Action<Index1D, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<float>, float, float, float, float> adam;
+    private readonly Action<Index1D, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<float>, float, float, float, float>? adam;
 
-    public Model(Config c, int vocab)
+    public Model(Config c, int vocab, bool forTraining = true)
     {
         Config = c;
+        ForTraining = forTraining;
         context = Context.Create(b => b.Cuda().EnableAlgorithms());
         CudaDevice? device = null;
         foreach (var candidate in context.GetCudaDevices())
             if (device is null || candidate.Name.Contains("GTX 1650")) device = candidate;
         gpu = (device ?? throw new InvalidOperationException("找不到 CUDA 裝置，請先完成第 0 課。")).CreateCudaAccelerator(context);
         forward = gpu.LoadAutoGroupedStreamKernel<Index1D, Op, Shape, Values, ArrayView<float>>(Kernels.Forward);
-        backward = gpu.LoadAutoGroupedStreamKernel<Index1D, Op, Shape, Values, ArrayView<float>, ArrayView<float>, int, ArrayView<float>>(Kernels.Backward);
-        adam = gpu.LoadAutoGroupedStreamKernel<Index1D, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<float>, float, float, float, float>(Kernels.Adam);
+        if (forTraining)
+        {
+            backward = gpu.LoadAutoGroupedStreamKernel<Index1D, Op, Shape, Values, ArrayView<float>, ArrayView<float>, int, ArrayView<float>>(Kernels.Backward);
+            adam = gpu.LoadAutoGroupedStreamKernel<Index1D, ArrayView<float>, ArrayView<float>, ArrayView<float>, ArrayView<float>, float, float, float, float>(Kernels.Adam);
+        }
 
         int rows = c.Batch * c.T, d = c.D;
         tokens = Ids(new int[rows]);
@@ -68,7 +73,7 @@ internal sealed class Model : IDisposable
         }
         Logits = Apply(Op.Linear, new(rows, d, vocab), Normalize("final", x), Param("head", d * vocab));
         Loss = Apply(Op.Loss, new(rows, vocab, 1), Logits, ids: targets);
-        Loss.Grad.CopyFromCPU(Enumerable.Repeat(1f / rows, rows).ToArray());
+        Loss.Grad?.CopyFromCPU(Enumerable.Repeat(1f / rows, rows).ToArray());
     }
 
     private Buffer Allocate(int count)
@@ -87,16 +92,16 @@ internal sealed class Model : IDisposable
         return buf;
     }
 
-    private Tensor TensorOf(int count) => new(Allocate(count), Allocate(count));
+    private Tensor TensorOf(int count) => new(Allocate(count), ForTraining ? Allocate(count) : null);
 
     private Tensor Param(string name, int count, float? fill = null)
     {
         var values = TensorOf(count);
         values.Value.CopyFromCPU(Enumerable.Range(0, count).Select(i => fill ?? (random.NextSingle() - 0.5f) * 0.07f).ToArray());
-        var m = Allocate(count);
-        var v = Allocate(count);
-        m.MemSetToZero();
-        v.MemSetToZero();
+        var m = ForTraining ? Allocate(count) : null;
+        var v = ForTraining ? Allocate(count) : null;
+        m?.MemSetToZero();
+        v?.MemSetToZero();
         Parameters.Add(new(name, values, m, v, fill.HasValue ? 0 : 0.01f));
         return values;
     }
@@ -137,19 +142,34 @@ internal sealed class Model : IDisposable
         return Loss.Value.GetAsArray1D().Average();
     }
 
+    // 推論只跑到 logits，省去標籤上傳與交叉熵計算。
+    public float[] Forward(int[] input)
+    {
+        if (input.Length != tokens.Length)
+            throw new ArgumentException("輸入長度應等於 Batch × T。");
+        tokens.CopyFromCPU(input);
+        foreach (var n in graph)
+        {
+            if (n.Op == Op.Loss) break;
+            forward(n.Output.Value.IntExtent, n.Op, n.Shape, Inputs(n), n.Output.Value.View);
+        }
+        return Logits.Value.GetAsArray1D();
+    }
+
     public void Differentiate()
     {
-        foreach (var p in Parameters) p.Tensor.Grad.MemSetToZero();
+        if (!ForTraining) throw new InvalidOperationException("反向傳播需要訓練模式。");
+        foreach (var p in Parameters) p.Tensor.Grad!.MemSetToZero();
         foreach (var n in graph)
-            if (n.Output != Loss) n.Output.Grad.MemSetToZero();
+            if (n.Output != Loss) n.Output.Grad!.MemSetToZero();
         for (int i = graph.Count - 1; i >= 0; i--)
         {
             var n = graph[i];
             Pass(n.A, 0);
             if (n.B is not null) Pass(n.B, 1);
             void Pass(Tensor input, int side) =>
-                backward(input.Grad.IntExtent, n.Op, n.Shape, Inputs(n), n.Output.Value.View,
-                    n.Output.Grad.View, side, input.Grad.View);
+                backward!(input.Grad!.IntExtent, n.Op, n.Shape, Inputs(n), n.Output.Value.View,
+                    n.Output.Grad!.View, side, input.Grad.View);
         }
     }
 
@@ -160,7 +180,7 @@ internal sealed class Model : IDisposable
         Differentiate();
         Step++;
         foreach (var p in Parameters)
-            adam(p.Tensor.Value.IntExtent, p.Tensor.Value.View, p.Tensor.Grad.View, p.M.View, p.V.View,
+            adam!(p.Tensor.Value.IntExtent, p.Tensor.Value.View, p.Tensor.Grad!.View, p.M!.View, p.V!.View,
                 1 - MathF.Pow(0.9f, Step), 1 - MathF.Pow(0.999f, Step), p.Decay, learningRate);
         return loss;
     }

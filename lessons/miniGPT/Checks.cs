@@ -23,7 +23,7 @@ internal static class Checks
         m.Differentiate();
         foreach (var param in m.Parameters)
         {
-            var analytic = param.Tensor.Grad.GetAsArray1D();
+            var analytic = param.Tensor.Grad!.GetAsArray1D();
             int index = Enumerable.Range(0, analytic.Length).MaxBy(i => Math.Abs(analytic[i]));
             var values = p[param.Name];
             float old = values[index];
@@ -53,6 +53,45 @@ internal static class Checks
             Require(alphabet == "abc" && copy.Step == m.Step, "還原設定失敗");
             copy.Evaluate(input, target);
             Require(copy.Logits.Value.GetAsArray1D().SequenceEqual(m.Logits.Value.GetAsArray1D()), "還原 logits 失敗");
+            using (var inference = new InferenceSession(file))
+            {
+                Require(inference.BufferBytes < m.BufferBytes, "推論未減少 GPU 緩衝區");
+                var weights = m.Parameters.ToDictionary(x => x.Name, x => x.Tensor.Value.GetAsArray1D());
+                const string text = "abcabca";
+                double expectedLoss = 0;
+                int expectedCorrect = 0;
+                for (int start = 0; start < text.Length - 1; start += c.T)
+                {
+                    int length = Math.Min(c.T, text.Length - 1 - start);
+                    var window = new int[c.T];
+                    for (int j = 0; j < length; j++) window[j] = "abc".IndexOf(text[start + j]);
+                    var cpu = Reference.Predict(c with { Batch = 1 }, 3, weights, window);
+                    for (int row = 0; row < length; row++)
+                    {
+                        int answer = "abc".IndexOf(text[start + row + 1]);
+                        int best = Enumerable.Range(0, 3).MaxBy(i => cpu[row,i]);
+                        double peak = cpu[row,best];
+                        expectedLoss += peak - cpu[row,answer] + Math.Log(Enumerable.Range(0, 3).Sum(i => Math.Exp(cpu[row,i] - peak)));
+                        if (best == answer) expectedCorrect++;
+                    }
+                }
+                var score = inference.Score(text);
+                Require(score.Predictions == 6 && Math.Abs(score.Loss - expectedLoss / 6) < 2e-5
+                    && Math.Abs(score.Accuracy - expectedCorrect / 6.0) < 1e-10, "推論文本評分或尾段不符 CPU");
+                string generated = "ab";
+                for (int j = 0; j < 8; j++)
+                {
+                    string prefix = generated.Length > c.T ? generated[^c.T..] : generated;
+                    var window = new int[c.Batch * c.T];
+                    for (int k = 0; k < prefix.Length; k++) window[k] = "abc".IndexOf(prefix[k]);
+                    var values = m.Forward(window);
+                    int offset = (prefix.Length - 1) * 3;
+                    generated += "abc"[Enumerable.Range(0, 3).MaxBy(k => values[offset + k])];
+                }
+                Require(inference.Generate("ab", 8).Text == generated, "推論和訓練模式生成不一致");
+                Require(inference.Generate("ab", 0).Text == "ab", "零字元生成不符");
+                Console.WriteLine("推論模式、滑動視窗生成及含尾段的文本評分通過");
+            }
             copy.Train(input, target);
             m.Train(input, target);
             for (int i = 0; i < m.Parameters.Count; i++)

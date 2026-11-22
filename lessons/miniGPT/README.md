@@ -41,6 +41,31 @@ dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/my-first.ckpt 25
 
 可以把自己的 UTF-8 純文字檔路徑放在步數後，例如 `dotnet run --project lessons/miniGPT -- train lessons/miniGPT/custom.ckpt 100 my-text.txt 4`，最後的 4 是每批段數。續訓時也要提供同一份文本，例如 `dotnet run --project lessons/miniGPT -- resume lessons/miniGPT/custom.ckpt 25 my-text.txt`。教材字表支援 2 至 1024 個單一 UTF-16 單元的字元，包含常見中文字；含 emoji 或擴展漢字等代理對的語料會在訓練前提示。資料依原順序切分，約前九成用來抽訓練視窗、後一成驗證。兩段各需至少 65 字元，驗證用字必須曾在訓練段出現。內建[語料](corpus.txt)保留未出現在訓練段的完整句子組合。
 
+## 第 6 課　載入一次模型，生成與評分
+
+`InferenceSession` 負責載入權重、把文字轉成編號、呼叫 `Forward`、逐字挑選分數最高的候選字，並把結果還原成文字。你可以在同一個 session 依序傳入不同開頭。`Forward` 計算到候選分數就回傳。生成時使用 batch 1，載入既有訓練 checkpoint 時會略過動量，省下梯度與動量的 GPU 空間。續訓仍由 `resume` 載入完整狀態。
+
+先用第 5 課儲存的模型執行。checkpoint 保存在訓練電腦，可把下面路徑換成自己要比較的模型。本機目前最佳版本位於 `lessons/miniGPT/quality-step1001-lr0.0003-22f75508d3.ckpt`。
+
+```powershell
+$model = "lessons/miniGPT/my-first.ckpt"
+dotnet run --project lessons/miniGPT -- generate $model "the fox " 60
+dotnet run --project lessons/miniGPT -- benchmark $model 100
+dotnet run --project lessons/miniGPT -- score $model lessons/miniGPT/corpus.txt
+```
+
+第一個指令新增 60 個字元。省略數量時預設為 100，設成 0 會直接回傳開頭。這份模型沒有句尾停止 token，所以輸出可能在字中間截斷。相同的模型、開頭和長度會得到相同的貪婪生成結果。輸入需在模型字表內。
+
+第二個指令針對內建英文教材，用四個固定開頭比較模型，每個開頭各新增 100 個字元。它會列出 CUDA 裝置、模型步數、checkpoint SHA-256、載入耗時、推論緩衝區用量，再逐一列出生成文字、暖機後首字等待毫秒、生成字元／秒。這些時間在目前程序內量測，載入時間含模型初始化與 kernel 準備；生成速度和訓練速度的計算工作不同，應各自比較。至少需生成 1 個字元。
+
+句型統計包含開頭，以句點分出完整句子，規則是 `the 動物 動作 in the 地點.`，動物、動作與地點各取自教材的四個字詞。同一個開頭的輸出中再次出現的相同句子會計入重複句。長度限制截斷的末句會排除。這個統計適合觀察本教材句型，應搭配閱讀生成文字。自訂語料的模型可以直接使用 `generate` 和 `score`。
+
+第三個指令只讀取模型，對文本的每個下一字元評分。每 64 個位置重置一次上下文，最後不足 64 個位置也計入，因此長度為 n 的文本共有 n−1 個評分位置。它會回報平均交叉熵 loss、字元 perplexity（exp(loss)）和下一字元正確率。loss 和 perplexity 越低越好，正確率越高越好。文本至少需兩個字元，且所有字元都在訓練字表內。UTF-8 文本的換行會統一成 LF。
+
+`corpus.txt` 包含訓練內容，適合確認指令運作、比較相同文本上的結果。評估泛化能力時，請在下一輪訓練前保留獨立測試集，訓練與調參完成後再對它評分。先前訓練的驗證 loss 只計完整視窗，`score` 會包含尾段，兩者評分位置可能不同。生成則使用最近 64 字元的滑動視窗。
+
+[推論流程原始碼](InferenceSession.cs) 可搭配 [CLI 原始碼](InferenceCommands.cs) 閱讀。執行 `check` 也會用獨立 CPU 參考答案核對含尾段的評分，以及單段推論和原訓練模型的滑動視窗生成結果。
+
 ## 筆電實測
 
 **練習：比較學習率。** 學習率控制每次更新權重的步幅。從同一個模型複製兩份，各跑相同步數，才能把差異歸因到步幅。以下以第 5 課建立的檔案為起點，請使用尚未存在的副本名稱：
